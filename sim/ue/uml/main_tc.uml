@@ -1,0 +1,70 @@
+@startuml
+autonumber
+title basic flow
+
+participant "UE" as ue
+participant "PHY" as phy
+participant "Network" as nw
+
+note over ue, nw
+UE sends MSG1
+end note
+
+ue -> nw : [**0.1**] RACH, RA-RNTI, preamble
+
+note over ue, nw
+Network sends MSG2 with 2 TTI advance to PHY
+end note
+
+nw -> phy : [**0.3**] DL DCI Format 1a, RA-RNTI
+nw -> phy : [**0.3**] DL SCH , RA-RNTI
+nw -> ue : [**0.5**] RAR, TC-RNTI
+
+note over ue, nw
+UE sends MSG in the 2nd UL SF after RAR received
+end note
+nw -> phy : [**1.1**] UL SCH (1 TTI advance)
+ue -> nw : [**1.2**] MSG3 (RRC Connection Request), TC-RNTI
+phy -> nw : [**1.2**] MSG3 CRC (0: Correct)
+
+note over ue, nw
+Network sends MSG4
+end note
+nw -> phy : [**1.6**] DL DCI Format 1a, TC-RNTI
+nw -> phy : [**1.6**] DL SCH , TC-RNTI
+nw -> ue : [**1.8**] Contention Resolution, TC-RNTI
+nw --> phy : [**2.1**] UCI_HARQ (Cfg PHY to recv HARQ)
+ue -> nw : [**2.2**] HARQ ACK
+
+note over ue, nw
+Network sends RRC Setup
+end note
+
+nw -> phy : [**2.6**] DL DCI Format 1a, C-RNTI = TC-RNTI
+nw -> phy : [**2.6**] DL SCH, C-RNTI
+nw -> ue : [**2.8**] RRC Setup, C-RNTI
+nw --> phy : [**3.1**] UCI_HARQ (Cfg PHY to recv HARQ)
+ue -> nw : [**3.2**] HARQ ACK
+
+note over ue, nw
+UE sends SR in the next UL SF after HARQ ACK for RRC Setup sent
+Network send DCI0 to UE to allocate 1 RB for BSR, UE sends BSR 
+4 SF's after DCI0 received
+end note
+
+nw --> phy : [**3.6**] UCI_SR (Cfg PHY to recv SR)
+ue -> nw : [**3.7**] SR
+nw -> ue : [**4.3**] UL DCI0 (1 RB)
+nw -> phy : [**4.6**] UL SCH 
+ue -> nw : [**4.7**] BSR
+
+note over ue, nw
+Network schedules UL resource for RRC Setup complete according
+to BSR value received, also HARQ ACK for BSR is sent together
+end note
+
+nw -> ue : [**5.3**] HARQ ACK / UL DCI0 (8 RB)
+nw -> phy : [**5.6**] UL SCH 
+ue -> nw : [**5.7**] RRC Setup Complete
+
+@enduml
