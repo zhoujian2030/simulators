@@ -10,6 +10,8 @@
 #include <stdio.h>
 #include <string.h>
 #include <pthread.h>
+#include <time.h>
+#include <sys/time.h>
 
 #define UE_LOGGER_NAME "UE"
 #define FILENAME /*lint -save -e613 */( NULL == strrchr(__FILE__, '\\') ? (strrchr(__FILE__, '/')+1): strrchr(__FILE__, '\\')+1)
@@ -18,19 +20,43 @@
 
 #define LOG_DEBUG(moduleId, fmt, args...){\
         (void)moduleId;\
-        printf("[yyyy-mm-dd hh:mm:ss.xxx] [DEBUG] [%s] [%u] [%s:%d] - [%s], ",moduleId, (unsigned int)(pthread_self()), FILENAME,LINE, FUNCNAME);\
+        struct timeval tv;\
+        gettimeofday(&tv, 0);\
+        int ms = tv.tv_usec/1000;\
+        struct tm * tmVal =  localtime(&tv.tv_sec);\
+        char date[32];\
+        strftime(date, sizeof(date),"%Y-%m-%d %H:%M:%S",tmVal);\
+        printf("[%s.%d] [DEBUG] [%3.3s] [%ld] [%s:%d] - [%s], ", date, ms, moduleId, pthread_self(), FILENAME,LINE, FUNCNAME);\
         printf(fmt,##args);}
 #define LOG_INFO(moduleId,fmt,args...){\
         (void)moduleId;\
-        printf("[yyyy-mm-dd hh:mm:ss.xxx] [INFO ] [%s] [%u] [%s:%d] - [%s], ",moduleId, (unsigned int)(pthread_self()), FILENAME,LINE, FUNCNAME);\
+        struct timeval tv;\
+        gettimeofday(&tv, 0);\
+        int ms = tv.tv_usec/1000;\
+        struct tm * tmVal =  localtime(&tv.tv_sec);\
+        char date[32];\
+        strftime(date, sizeof(date),"%Y-%m-%d %H:%M:%S",tmVal);\
+        printf("[%s.%d] [INFO ] [%3.3s] [%ld] [%s:%d] - [%s], ", date, ms, moduleId, pthread_self(), FILENAME,LINE, FUNCNAME);\
         printf(fmt,##args);}
 #define LOG_WARN(moduleId, fmt,args...){\
         (void)moduleId;\
-        printf("[yyyy-mm-dd hh:mm:ss.xxx] [WARN ] [%s] [%u] [%s:%d] - [%s], ",moduleId, (unsigned int)(pthread_self()), FILENAME,LINE, FUNCNAME);\
+        struct timeval tv;\
+        gettimeofday(&tv, 0);\
+        int ms = tv.tv_usec/1000;\
+        struct tm * tmVal =  localtime(&tv.tv_sec);\
+        char date[32];\
+        strftime(date, sizeof(date),"%Y-%m-%d %H:%M:%S",tmVal);\
+        printf("[%s.%d] [WARN ] [%3.3s] [%ld] [%s:%d] - [%s], ", date, ms, moduleId, pthread_self(), FILENAME,LINE, FUNCNAME);\
         printf(fmt,##args);}
 #define LOG_ERROR(moduleId, fmt, args...){\
         (void)moduleId;\
-        printf("[yyyy-mm-dd hh:mm:ss.xxx] [ERROR] [%s] [%u] [%s:%d] - [%s], ",moduleId, (unsigned int)(pthread_self()), FILENAME,LINE, FUNCNAME);\
+        struct timeval tv;\
+        gettimeofday(&tv, 0);\
+        int ms = tv.tv_usec/1000;\
+        struct tm * tmVal =  localtime(&tv.tv_sec);\
+        char date[32];\
+        strftime(date, sizeof(date),"%Y-%m-%d %H:%M:%S",tmVal);\
+        printf("[%s.%d] [ERROR] [%3.3s] [%ld] [%s:%d] - [%s], ", date, ms, moduleId, pthread_self(), FILENAME,LINE, FUNCNAME);\
         printf(fmt,##args);}
 
 
