@@ -8,7 +8,7 @@
 #include "HarqEntity.h"
 #include "UeTerminal.h"
 #include "CLogger.h"
-#include "StatisticsCounter.h"
+#include "StsCounter.h"
 
 using namespace ue;
 using namespace std;
@@ -321,7 +321,7 @@ void HarqEntity::UlHarqProcess::send(UInt16 harqId, UeTerminal* pUeTerminal) {
         if (UeTerminal::RRC_SETUP_COMPLETE_DCI0_RECVD == m_ueState) {
             pUeTerminal->buildRRCSetupComplete();
             pUeTerminal->buildCrcData(0);
-            StatisticsCounter::getInstance()->countRRCSetupComplCrcSent();    
+            StsCounter::getInstance()->countRRCSetupComplCrcSent();    
             pUeTerminal->ulHarqSendCallback(harqId, TRUE);
             m_state = TB_SENT;
             m_ueState = pUeTerminal->m_state;
@@ -366,10 +366,10 @@ BOOL HarqEntity::UlHarqProcess::handleAckNack(UInt16 harqId, UInt16 sfnsf, UInt8
     if (expectedHiSf == sf && expectedHiSfn == sfn) {
         this->stopTimer(); 
         if (hiValue == 1) {
-            StatisticsCounter::getInstance()->countHarqAckRecvd();
+            StsCounter::getInstance()->countHarqAckRecvd();
             pUeTerminal->ulHarqResultCallback(harqId, TRUE, m_ueState);
         } else {
-            StatisticsCounter::getInstance()->countHarqNAckRecvd();        
+            StsCounter::getInstance()->countHarqNAckRecvd();        
             pUeTerminal->ulHarqResultCallback(harqId, FALSE, m_ueState);
         }
         // reset to IDLE state without retransmitting TB even NACK
@@ -396,7 +396,7 @@ void HarqEntity::UlHarqProcess::handleUlSchConfig(UInt16 harqId, UInt16 sfnsf, U
     if (UeTerminal::RRC_SETUP_COMPLETE_DCI0_RECVD == m_ueState) {
         // only count this msg for statistics, UE will send RRC setup complete no matter MAC 
         // send this UL config or not
-        StatisticsCounter::getInstance()->countRRCSetupComplULCfgRecvd();
+        StsCounter::getInstance()->countRRCSetupComplULCfgRecvd();
         LOG_DEBUG(UE_LOGGER_NAME, "[UE: %d], [RA-RNTI: %d], [RNTI: %d], UL config to receive RRC setup complete\n", 
             pUeTerminal->m_ueId, pUeTerminal->m_raRnti, pUeTerminal->m_rnti); 
     } else {
@@ -421,7 +421,7 @@ BOOL HarqEntity::UlHarqProcess::calcAndProcessTimer(UInt16 harqId, UeTerminal* p
         pUeTerminal->ulHarqTimeoutCallback(harqId, m_ueState);
         m_state = IDLE;
         m_ueState = 0;
-        StatisticsCounter::getInstance()->countHarqTimeout();
+        StsCounter::getInstance()->countHarqTimeout();
         isTimeout = TRUE;
     } 
         

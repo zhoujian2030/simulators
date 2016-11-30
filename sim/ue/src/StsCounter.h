@@ -1,22 +1,22 @@
 /*
- * StatisticsCounter.h
+ * StsCounter.h
  *
  *  Created on: Nov 08, 2016
  *      Author: j.zhou
  */
 
-#ifndef STATISTICS_COUNTER_H
-#define STATISTICS_COUNTER_H
+#ifndef STS_COUNTER_H
+#define STS_COUNTER_H
 
 #include "UeBaseType.h"
 
 namespace ue {
 
-    class StatisticsCounter {
+    class StsCounter {
     public:
-        ~StatisticsCounter();
+        ~StsCounter();
 
-        static StatisticsCounter* getInstance();
+        static StsCounter* getInstance();
 
         void show();
 
@@ -47,9 +47,9 @@ namespace ue {
         void countIdentityRequestTimeout();
 
     private:
-        StatisticsCounter();
+        StsCounter();
 
-        static StatisticsCounter* m_theInstance;
+        static StsCounter* m_theInstance;
 
         UInt32 m_rachSent;
         UInt32 m_rachTimeout;
@@ -88,128 +88,128 @@ namespace ue {
     };
 
     // -----------------------------------------
-    inline void StatisticsCounter::countRachSent() {
+    inline void StsCounter::countRachSent() {
         m_rachSent++;
     }
 
     // -----------------------------------------
-    inline void StatisticsCounter::countRachTimeout() {
+    inline void StsCounter::countRachTimeout() {
         m_rachTimeout++;
     }
 
     // -----------------------------------------
-    inline void StatisticsCounter::countRarRecvd() {
+    inline void StsCounter::countRarRecvd() {
         m_rarRecvd++;
     }
 
     // -----------------------------------------
-    inline void StatisticsCounter::countRarInvalid() {
+    inline void StsCounter::countRarInvalid() {
         m_rarInvalid++;
     }
 
     // -----------------------------------------
-    inline void StatisticsCounter::countMsg3ULCfgRecvd() {
+    inline void StsCounter::countMsg3ULCfgRecvd() {
         m_msg3UlCfgRecvd++;
     }
 
     // -----------------------------------------
-    inline void StatisticsCounter::countMsg3Sent() {
+    inline void StsCounter::countMsg3Sent() {
         m_msg3Sent++;
     }
 
     // -----------------------------------------
-    inline void StatisticsCounter::countMsg3CrcSent() {
+    inline void StsCounter::countMsg3CrcSent() {
         m_msg3CrcSent++;
     }  
 
     // -----------------------------------------
-    inline void StatisticsCounter::countContentionResolutionRecvd() {
+    inline void StsCounter::countContentionResolutionRecvd() {
         m_contentionResolutionRecvd++;
     }
 
     // -----------------------------------------
-    inline void StatisticsCounter::countContentionResolutionTimeout() {
+    inline void StsCounter::countContentionResolutionTimeout() {
         m_contentionResolutionTimeout++;
     }
 
     // -----------------------------------------
-    inline void StatisticsCounter::countContentionResolutionInvalid() {
+    inline void StsCounter::countContentionResolutionInvalid() {
         m_contentionResolutionInvalid++;
     }
 
     // -----------------------------------------
-    inline void StatisticsCounter::countHarqAckSent() {
+    inline void StsCounter::countHarqAckSent() {
         m_harqAckSent++;
     }
 
     // -----------------------------------------
-    inline void StatisticsCounter::countRRCSetupRecvd(){
+    inline void StsCounter::countRRCSetupRecvd(){
         m_rrcSetupRecvd++;
     }
 
     // -----------------------------------------
-    inline void StatisticsCounter::countRRCSetupInvalid() {
+    inline void StsCounter::countRRCSetupInvalid() {
         m_rrcSetupInvalid++;
     }
 
     // -----------------------------------------
-    inline void StatisticsCounter::countSRSent() { 
+    inline void StsCounter::countSRSent() { 
         m_srSent++;
     }
 
     // -----------------------------------------
-    inline void StatisticsCounter::countSRTimeout() {
+    inline void StsCounter::countSRTimeout() {
         m_srTimeout++;
     }
 
     // -----------------------------------------
-    inline void StatisticsCounter::countRRCSetupComplDCI0Recvd() {
+    inline void StsCounter::countRRCSetupComplDCI0Recvd() {
         m_rrcSetupComplDCI0Recvd++;
     }
 
     // -----------------------------------------
-    inline void StatisticsCounter::countRRCSetupComplULCfgRecvd() {
+    inline void StsCounter::countRRCSetupComplULCfgRecvd() {
         m_rrcSetupComplUlCfgRecvd++;
     }
 
     
     // -----------------------------------------
-    inline void StatisticsCounter::countRRCSetupComplSent() {
+    inline void StsCounter::countRRCSetupComplSent() {
         m_rrcSetupComplSent++;
     }
 
     // -----------------------------------------
-    inline void StatisticsCounter::countRRCSetupComplCrcSent() {
+    inline void StsCounter::countRRCSetupComplCrcSent() {
         m_rrcSetupComplCrcSent++;
     }
 
     // -----------------------------------------
-    inline void StatisticsCounter::countIdentityRequestTimeout() {
+    inline void StsCounter::countIdentityRequestTimeout() {
         m_identityReqTimeout++;
     }
 
     // -----------------------------------------
-    inline void StatisticsCounter::countHarqTimeout() {
+    inline void StsCounter::countHarqTimeout() {
         m_harqTimeout++;
     }
 
     // -----------------------------------------
-    inline void StatisticsCounter::countHarqAckRecvd() {
+    inline void StsCounter::countHarqAckRecvd() {
         m_harqAckRecvd++;
     }
 
     // -----------------------------------------
-    inline void StatisticsCounter::countHarqNAckRecvd() {
+    inline void StsCounter::countHarqNAckRecvd() {
         m_harqNAckRecvd++;
     }
 
     // -----------------------------------------
-    inline void StatisticsCounter::countRRCSetupComplHarqTimeout() {
+    inline void StsCounter::countRRCSetupComplHarqTimeout() {
         m_rrcSetupComplHarqTimeout++;
     }
 
     // -----------------------------------------
-    inline void StatisticsCounter::countIdentityRequestRecvd() {
+    inline void StsCounter::countIdentityRequestRecvd() {
         m_identityReqRecvd++;
     }
 }

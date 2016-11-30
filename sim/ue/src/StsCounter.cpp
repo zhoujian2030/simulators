@@ -1,19 +1,19 @@
 /*
- * StatisticsCounter.cpp
+ * StsCounter.cpp
  *
  *  Created on: Nov 08, 2016
  *      Author: j.zhou
  */
 
-#include "StatisticsCounter.h"
+#include "StsCounter.h"
 #include "CLogger.h"
 
 using namespace ue;
 
-StatisticsCounter* StatisticsCounter::m_theInstance = 0;
+StsCounter* StsCounter::m_theInstance = 0;
 
 // ------------------------------------------------
-StatisticsCounter::StatisticsCounter() 
+StsCounter::StsCounter() 
 : m_rachSent(0), m_rachTimeout(0), /*m_rachTimeoutMissSchPdu(0),
   m_rarDciRecvd(0), m_rarDciInvalid()0, */m_rarRecvd(0), m_rarInvalid(0),
   m_msg3UlCfgRecvd(0), m_msg3Sent(0), m_msg3CrcSent(0), m_contentionResolutionRecvd(0),
@@ -26,14 +26,14 @@ StatisticsCounter::StatisticsCounter()
 }
 
 // ------------------------------------------------
-StatisticsCounter::~StatisticsCounter() {
+StsCounter::~StsCounter() {
     
 }
 
 // ------------------------------------------------
-StatisticsCounter* StatisticsCounter::getInstance() {
+StsCounter* StsCounter::getInstance() {
     if (m_theInstance == 0) {
-        m_theInstance = new StatisticsCounter();
+        m_theInstance = new StsCounter();
         return m_theInstance;
     }
 
@@ -41,7 +41,7 @@ StatisticsCounter* StatisticsCounter::getInstance() {
 }
 
 // ------------------------------------------------
-void StatisticsCounter::show() {
+void StsCounter::show() {
     LOG_INFO(UE_LOGGER_NAME, "==========================================\n");
 
     LOG_INFO(UE_LOGGER_NAME, " Num RACH sent:                        %d\n", m_rachSent);

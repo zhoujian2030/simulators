@@ -10,7 +10,7 @@
 #include "CLogger.h"
 #include "UeMacAPI.h"
 #include "UeScheduler.h"
-#include "StatisticsCounter.h"
+#include "StsCounter.h"
 #include "HarqEntity.h"
 #include "RlcLayer.h"
 #include "PdcpLayer.h"
@@ -29,9 +29,7 @@ UeTerminal::UeTerminal(UInt8 ueId, UInt16 raRnti, UeMacAPI* ueMacAPI)
 
     m_t300Value = -1;
     m_contResolutionTValue = -1;
-    m_identityReqTValue = -1;
     m_srTValue = -1;
-    m_harqTValue = -1;
     m_bsrTValue = -1;
     m_needSendSR = FALSE;
     m_dlSchMsg = new DlSchMsg();
@@ -111,7 +109,7 @@ void UeTerminal::scheduleRach(UeScheduler* pUeScheduler) {
         this->startT300();
         m_state = MSG1_SENT;
 
-        StatisticsCounter::getInstance()->countRachSent();
+        StsCounter::getInstance()->countRachSent();
 
         LOG_DEBUG(UE_LOGGER_NAME, "[UE: %d], [RA-RNTI: %d], compose rach indication, msgLen = %d\n", 
             m_ueId, m_raRnti, pL1Api->msgLen);
@@ -123,7 +121,7 @@ void UeTerminal::scheduleRach(UeScheduler* pUeScheduler) {
                 return;
             } else {
                 LOG_ERROR(UE_LOGGER_NAME, "[UE: %d], [RA-RNTI: %d], RACH timeout\n", m_ueId, m_raRnti);
-                StatisticsCounter::getInstance()->countRachTimeout();
+                StsCounter::getInstance()->countRachTimeout();
                 m_state = IDLE;
                 pUeScheduler->resetUeTerminal(m_rnti, m_ueId);
             }
@@ -138,7 +136,7 @@ void UeTerminal::scheduleMsg3(UeScheduler* pUeScheduler) {
         if (m_sfn == m_msg3Sfn && m_sf == m_msg3Sf) {
             buildMsg3Data();
             buildCrcData(0);
-            StatisticsCounter::getInstance()->countMsg3CrcSent();
+            StsCounter::getInstance()->countMsg3CrcSent();
             m_state = MSG3_SENT;
             startContentionResolutionTimer(); 
         } else {
@@ -190,7 +188,7 @@ void UeTerminal::scheduleSR(UeScheduler* pUeScheduler) {
             startSRTimer();
             m_needSendSR = FALSE;
 
-            StatisticsCounter::getInstance()->countSRSent();
+            StsCounter::getInstance()->countSRSent();
 
             LOG_DEBUG(UE_LOGGER_NAME, "[UE: %d], [RA-RNTI: %d], [RNTI: %d], compose SR, msgLen = %d\n", 
                 m_ueId, m_raRnti, m_rnti, pL1Api->msgLen);
@@ -216,16 +214,6 @@ void UeTerminal::scheduleDCCH(UeScheduler* pUeScheduler) {
         case RRC_SETUP_COMPLETE_DCI0_RECVD:
         case RRC_SETUP_COMPLETE_SR_DCI0_RECVD:
         {
-            // if (m_sfn == m_rrcSetupCompSfn && m_sf == m_rrcSetupCompSf) {
-            //     buildRRCSetupComplete();
-            //     buildCrcData(0);
-            //     StatisticsCounter::getInstance()->countRRCSetupComplCrcSent();
-            //     stopT300();
-            //     startHarqTimer();
-            //     m_state = RRC_SETUP_COMPLETE_SENT;           
-            // } else {
-            //     // TODO exception in case frame lost
-            // }
             m_harqEntity->send(this);
             break;
         }
@@ -236,38 +224,7 @@ void UeTerminal::scheduleDCCH(UeScheduler* pUeScheduler) {
         }
         case RRC_SETUP_COMPLETE_BSR_SENT:
         {
-            // if (processUlHarqTimer()) {
-            //     pUeScheduler->resetUeTerminal(m_rnti, m_ueId);
-            // }
             m_harqEntity->calcAndProcessUlHarqTimer(this);
-            break;
-        }
-
-        // case RRC_SETUP_COMPLETE_ACK_RECVD:
-        // {
-        //     this->startIdentityReqTimer();
-        //     m_state = WAIT_IDENTITY_REQUEST;
-        //     LOG_DEBUG(UE_LOGGER_NAME, "[UE: %d], [RA-RNTI: %d], [RNTI: %d], start timer to wait identity request\n", 
-        //         m_ueId, m_raRnti, m_rnti);
-
-        //     break;
-        // }
-
-        // case RRC_SETUP_COMPLETE_NACK_RECVD:
-        // {
-        //     pUeScheduler->resetUeTerminal(m_rnti, m_ueId);
-        //     m_state =  IDLE;
-        //     LOG_DEBUG(UE_LOGGER_NAME, "[UE: %d], [RA-RNTI: %d], [RNTI: %d], reset state to IDLE\n", 
-        //         m_ueId, m_raRnti, m_rnti);
-        //     break;
-        // }
-
-        case WAIT_IDENTITY_REQUEST:
-        {
-            if (processIdentityReqTimer()) {
-                pUeScheduler->resetUeTerminal(m_rnti, m_ueId);
-            }
-
             break;
         }
 
@@ -298,49 +255,6 @@ void UeTerminal::scheduleDCCH(UeScheduler* pUeScheduler) {
 // --------------------------------------------
 void UeTerminal::processDlHarq(UeScheduler* pUeScheduler) {
     m_harqEntity->sendAck(m_sfn, m_sf, this);
-    // if (m_state == MSG4_RECVD || m_state == RRC_SETUP_RECVD) {
-    //     if (m_sfn == m_harqAckSfn && m_sf == m_harqAckSf) {
-    //         UInt32 msgLen = 0;
-    //         FAPI_l1ApiMsg_st* pL1Api = (FAPI_l1ApiMsg_st *)m_ueMacAPI->getHarqBuffer();
-    //         pL1Api->lenVendorSpecific = 0;
-    //         pL1Api->msgId = PHY_UL_HARQ_INDICATION;
-
-    //         FAPI_harqIndication_st* pHarqInd = (FAPI_harqIndication_st *)&pL1Api->msgBody[0];
-    //         pHarqInd->sfnsf = ( (m_sfn) << 4) | ( (m_sf) & 0xf);
-    //         pHarqInd->numOfHarq += 1;
-    //         UInt32 harqHeaderLen = offsetof(FAPI_harqIndication_st, harqPduInfo);
-
-    //         FAPI_tddHarqPduIndication_st* pTddHarqPduInd = (FAPI_tddHarqPduIndication_st*)&pHarqInd->harqPduInfo[pHarqInd->numOfHarq - 1];        
-    //         pTddHarqPduInd->rnti = m_rnti; 
-    //         pTddHarqPduInd->mode = tddAckNackFeedbackMode;  // 0: bundling, 1: multplexing, 2: special bundling
-    //         pTddHarqPduInd->numOfAckNack = 1;
-    //         pTddHarqPduInd->harqBuffer[0] = 1;
-    //         pTddHarqPduInd->harqBuffer[1] = 0;
-
-    //         msgLen += sizeof(FAPI_tddHarqPduIndication_st);
-    //         pL1Api->msgLen += msgLen;
-
-    //         m_ueMacAPI->addHarqDataLength(msgLen);
-    //         if (pHarqInd->numOfHarq == 1) {
-    //             m_ueMacAPI->addHarqDataLength(FAPI_HEADER_LENGTH + harqHeaderLen);
-    //             pL1Api->msgLen += harqHeaderLen;
-    //         }       
-            
-    //         if (m_state == MSG4_RECVD) {
-    //             m_state = MSG4_ACK_SENT;
-    //         } else {
-    //             m_state = RRC_SETUP_ACK_SENT;
-    //             this->setSfnSfForSR();
-    //         }
-
-    //         StatisticsCounter::getInstance()->countHarqAckSent();
-
-    //         LOG_DEBUG(UE_LOGGER_NAME, "[UE: %d], [RA-RNTI: %d], [RNTI: %d], compose HARQ ACK, msgLen = %d\n", 
-    //             m_ueId, m_raRnti, m_rnti, pL1Api->msgLen);
-    //     } else {
-    //         // TODO exception in case frame lost
-    //     }
-    // }
 }
 
 // --------------------------------------------------------
@@ -356,54 +270,12 @@ BOOL UeTerminal::processContentionResolutionTimer() {
         // contention resolution timeout
         m_state = IDLE;
         LOG_ERROR(UE_LOGGER_NAME, "[UE: %d], [RA-RNTI: %d], [RNTI: %d], Contention Resolution timeout\n", m_ueId, m_raRnti, m_rnti);
-        StatisticsCounter::getInstance()->countContentionResolutionTimeout();
+        StsCounter::getInstance()->countContentionResolutionTimeout();
         return TRUE;
     } 
         
     m_contResolutionTValue--;
     return FALSE;
-}
-
-// --------------------------------------------------------
-BOOL UeTerminal::processIdentityReqTimer() {
-    if (m_identityReqTValue < 0) {
-        return FALSE;
-    }
-
-    LOG_DEBUG(UE_LOGGER_NAME, "[UE: %d], [RA-RNTI: %d], [RNTI: %d], m_identityReqTValue = %d\n", 
-        m_ueId, m_raRnti, m_rnti, m_identityReqTValue);
-
-    if (m_identityReqTValue == 0) {
-        // contention resolution timeout
-        m_state = IDLE;
-        LOG_ERROR(UE_LOGGER_NAME, "[UE: %d], [RA-RNTI: %d], [RNTI: %d], Identity request timeout\n", m_ueId, m_raRnti, m_rnti);
-        StatisticsCounter::getInstance()->countIdentityRequestTimeout();
-        return TRUE;
-    } 
-        
-    m_identityReqTValue--;
-    return FALSE;    
-}
-
-// --------------------------------------------------------
-BOOL UeTerminal::processUlHarqTimer() {
-    if (m_harqTValue < 0) {
-        return FALSE;
-    }
-
-    LOG_DEBUG(UE_LOGGER_NAME, "[UE: %d], [RA-RNTI: %d], [RNTI: %d], m_harqTValue = %d\n", 
-        m_ueId, m_raRnti, m_rnti, m_harqTValue);
-
-    if (m_harqTValue == 0) {
-        // contention resolution timeout
-        m_state = IDLE;
-        LOG_ERROR(UE_LOGGER_NAME, "[UE: %d], [RA-RNTI: %d], [RNTI: %d], RRC setup complete harq timeout\n", m_ueId, m_raRnti, m_rnti);
-        StatisticsCounter::getInstance()->countRRCSetupComplHarqTimeout();
-        return TRUE;
-    } 
-        
-    m_harqTValue--;
-    return FALSE;      
 }
 
 // -------------------------------------------------------
@@ -418,7 +290,7 @@ BOOL UeTerminal::processSRTimer() {
     if (m_srTValue == 0) {
         m_state = IDLE;
         LOG_ERROR(UE_LOGGER_NAME, "[UE: %d], [RA-RNTI: %d], [RNTI: %d], SR timeout\n", m_ueId, m_raRnti, m_rnti);
-        StatisticsCounter::getInstance()->countSRTimeout();
+        StsCounter::getInstance()->countSRTimeout();
         return TRUE;
     }
 
@@ -438,7 +310,7 @@ BOOL UeTerminal::processBSRTimer() {
     if (m_bsrTValue == 0) {
         m_state = IDLE;
         LOG_ERROR(UE_LOGGER_NAME, "[UE: %d], [RA-RNTI: %d], [RNTI: %d], SR timeout\n", m_ueId, m_raRnti, m_rnti);
-        //StatisticsCounter::getInstance()->countSRTimeout();
+        //StsCounter::getInstance()->countSRTimeout();
         return TRUE;
     }
 
@@ -528,7 +400,7 @@ void UeTerminal::buildMsg3Data() {
 
     m_ueMacAPI->addSchPduData(msg3Buffer, pUlDataPduInd->length);
 
-    StatisticsCounter::getInstance()->countMsg3Sent();
+    StsCounter::getInstance()->countMsg3Sent();
 
     LOG_DEBUG(UE_LOGGER_NAME, "[UE: %d], [RA-RNTI: %d], [RNTI: %d], compose MSG3, msgLen = %d\n", 
         m_ueId, m_raRnti, m_rnti, pL1Api->msgLen);
@@ -589,7 +461,7 @@ void UeTerminal::buildBSR(BOOL isLongBSR) {
     pL1Api->msgLen += msgLen;
     m_ueMacAPI->addSchDataLength(msgLen);
 
-    // StatisticsCounter::getInstance()->countRRCSetupComplSent();
+    // StsCounter::getInstance()->countRRCSetupComplSent();
 
     LOG_DEBUG(UE_LOGGER_NAME, "[UE: %d], [RA-RNTI: %d], [RNTI: %d], compose BSR, msgLen = %d\n", 
         m_ueId, m_raRnti, m_rnti, pL1Api->msgLen);  
@@ -686,7 +558,7 @@ void UeTerminal::buildRRCSetupComplete() {
 
     m_ueMacAPI->addSchPduData(rrcSetupCompl, pUlDataPduInd->length);
 
-    StatisticsCounter::getInstance()->countRRCSetupComplSent();
+    StsCounter::getInstance()->countRRCSetupComplSent();
 
     LOG_DEBUG(UE_LOGGER_NAME, "[UE: %d], [RA-RNTI: %d], [RNTI: %d], compose RRC setup complete, msgLen = %d\n", 
         m_ueId, m_raRnti, m_rnti, pL1Api->msgLen);
@@ -814,40 +686,15 @@ void UeTerminal::handleDlTxData(FAPI_dlDataTxRequest_st* pDlDataTxHeader, FAPI_d
             this->setSfnSfForMsg3();
             this->m_rnti = m_dlSchMsg->rar.tcRnti;
             pUeScheduler->updateRntiUeIdMap(m_rnti, m_ueId);
-            StatisticsCounter::getInstance()->countRarRecvd();
+            StsCounter::getInstance()->countRarRecvd();
             LOG_DEBUG(UE_LOGGER_NAME, "[UE: %d], [RA-RNTI: %d], recv RAR msg and change m_state to %d, MSG3 will be sent in %d.%d\n", 
                 m_ueId, m_raRnti, m_state, m_msg3Sfn, m_msg3Sf); 
         } else {
-            StatisticsCounter::getInstance()->countRarInvalid();
+            StsCounter::getInstance()->countRarInvalid();
             LOG_ERROR(UE_LOGGER_NAME, "Fail to parse RAR\n");
-        }
-    // } else if (m_state == MSG4_SCH_RECVD) {
-    //     if (parseContentionResolutionPdu(data, byteLen)) {
-    //         m_state = MSG4_RECVD;
-    //         this->stopContentionResolutionTimer();
-    //         this->setSfnSfForHarqAck();
-    //         StatisticsCounter::getInstance()->countContentionResolutionRecvd();
-    //         // try to change rnti ??
-    //         LOG_DEBUG(UE_LOGGER_NAME, "[UE: %d], [RA-RNTI: %d], recv Contention resolution msg and change m_state to %d, HARQ ACK will be sent in %d.%d\n", 
-    //             m_ueId, m_raRnti, m_state, m_harqAckSfn, m_harqAckSf); 
-    //     } else {
-    //         StatisticsCounter::getInstance()->countContentionResolutionInvalid();
-    //     }
-    // } else if (m_state == RRC_SETUP_SCH_RECVD) {
-    //     if (parseRRCSetupPdu(data, byteLen)) {
-    //         m_state = RRC_SETUP_RECVD;
-    //         this->setSfnSfForHarqAck();
-    //         StatisticsCounter::getInstance()->countRRCSetupRecvd();
-    //         LOG_DEBUG(UE_LOGGER_NAME, "[UE: %d], [RA-RNTI: %d], recv RRC setup and change m_state to %d, HARQ ACK will be sent in %d.%d\n", 
-    //             m_ueId, m_raRnti, m_state, m_harqAckSfn, m_harqAckSf); 
-    //     } else {
-    //         StatisticsCounter::getInstance()->countRRCSetupInvalid();
-    //     }    
+        }   
     } else {
         m_harqEntity->receive(pDlDataTxHeader->sfnsf, data, byteLen, this);
-        // // TODO other msg like rrc setup
-        // LOG_DEBUG(UE_LOGGER_NAME, "[UE: %d], [RA-RNTI: %d], this is not complete yet, TODO\n", 
-        //         m_ueId, m_raRnti); 
     }
 }
 
@@ -873,7 +720,7 @@ void UeTerminal::handleUlSchPdu(FAPI_ulConfigRequest_st* pUlConfigHeader, FAPI_u
         }        
         // only count this msg for statistics, UE will send MSG3 no matter MAC 
         // send this UL config or not
-        StatisticsCounter::getInstance()->countMsg3ULCfgRecvd();
+        StsCounter::getInstance()->countMsg3ULCfgRecvd();
         LOG_DEBUG(UE_LOGGER_NAME, "[UE: %d], [RA-RNTI: %d], [RNTI: %d], UL config to receive MSG3\n", 
             m_ueId, m_raRnti, m_rnti); 
     } else {
@@ -907,12 +754,12 @@ void UeTerminal::handleDci0Pdu(FAPI_dlHiDCIPduInfo_st* pHIDci0Header, FAPI_dlDCI
             m_harqEntity->allocateUlHarqProcess(pHIDci0Header, pDci0Pdu, this);
             // stop the SR timer even it fails to allocate harq process for sending UL data
             stopSRTimer();                
-            // StatisticsCounter::getInstance()->countRRCSetupComplDCI0Recvd();
+            // StsCounter::getInstance()->countRRCSetupComplDCI0Recvd();
             
         } else if (m_state == RRC_SETUP_COMPLETE_BSR_ACK_RECVD) {  
             m_harqEntity->allocateUlHarqProcess(pHIDci0Header, pDci0Pdu, this);       
             stopBSRTimer();
-            StatisticsCounter::getInstance()->countRRCSetupComplDCI0Recvd();
+            StsCounter::getInstance()->countRRCSetupComplDCI0Recvd();
         } else {
             LOG_DEBUG(UE_LOGGER_NAME, "[UE: %d], [RA-RNTI: %d], [RNTI: %d], TBD state = %d\n", 
                 m_ueId, m_raRnti, m_rnti, m_state); 
@@ -1005,24 +852,20 @@ void UeTerminal::dlHarqReceiveCallback(UInt16 harqProcessNum, UInt8* theBuffer, 
             if (parseContentionResolutionPdu(theBuffer, byteLen)) {
                 m_state = MSG4_RECVD;
                 stopContentionResolutionTimer();
-                StatisticsCounter::getInstance()->countContentionResolutionRecvd();
+                StsCounter::getInstance()->countContentionResolutionRecvd();
                 // try to change rnti ??
-                // LOG_DEBUG(UE_LOGGER_NAME, "[UE: %d], [RA-RNTI: %d], recv Contention resolution msg and change m_state to %d, HARQ ACK will be sent in %d.%d\n", 
-                //     m_ueId, m_raRnti, m_state, m_harqAckSfn, m_harqAckSf); 
             } else {
-                StatisticsCounter::getInstance()->countContentionResolutionInvalid();
+                StsCounter::getInstance()->countContentionResolutionInvalid();
             }
         } else if (m_state == RRC_SETUP_SCH_RECVD) {
             if (parseRRCSetupPdu(theBuffer, byteLen)) {
                 m_state = RRC_SETUP_RECVD;
-                StatisticsCounter::getInstance()->countRRCSetupRecvd();
-                // LOG_DEBUG(UE_LOGGER_NAME, "[UE: %d], [RA-RNTI: %d], recv RRC setup and change m_state to %d, HARQ ACK will be sent in %d.%d\n", 
-                //     m_ueId, m_raRnti, m_state, m_harqAckSfn, m_harqAckSf); 
+                StsCounter::getInstance()->countRRCSetupRecvd();
             } else {
-                StatisticsCounter::getInstance()->countRRCSetupInvalid();
+                StsCounter::getInstance()->countRRCSetupInvalid();
             }    
         } else {
-            LOG_DEBUG(UE_LOGGER_NAME, "[UE: %d], [RA-RNTI: %d], [RNTI: %d], other DL DATA, not implemented\n", 
+            LOG_DEBUG(UE_LOGGER_NAME, "[UE: %d], [RA-RNTI: %d], [RNTI: %d], recv DCCH data (need parsed later)\n", 
                 m_ueId, m_raRnti, m_rnti);
 
             parseMacPdu(theBuffer, byteLen);
@@ -1088,7 +931,7 @@ void UeTerminal::dlHarqResultCallback(UInt16 harqProcessNum, UInt8 ackFlag, BOOL
 
         // it counts number of ACK needs to sent for DL TB, 
         // not counts the actual harq messages (FAPI_harqIndication_st) sents
-        StatisticsCounter::getInstance()->countHarqAckSent();
+        StsCounter::getInstance()->countHarqAckSent();
     }
 }
 
@@ -1447,7 +1290,7 @@ void UeTerminal::rrcCallback(UInt32 msgType, RrcMsg* msg) {
     switch (msgType) {
         case IDENTITY_REQUEST:
         {
-            StatisticsCounter::getInstance()->countIdentityRequestRecvd();
+            StsCounter::getInstance()->countIdentityRequestRecvd();
             m_triggerIdRsp = TRUE;
             LOG_DEBUG(UE_LOGGER_NAME, "[UE: %d], [RA-RNTI: %d], [RNTI: %d], recv Identity Request, will send Identity Resp in next UL SF\n", 
                 m_ueId, m_raRnti, m_rnti);

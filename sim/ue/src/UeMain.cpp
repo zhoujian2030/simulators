@@ -7,14 +7,15 @@
 
 #include "UeService.h"
 #include "SfnSfManager.h"
-#include "StatisticsCounter.h"
+#include "StsCounter.h"
+
 using namespace ue;
 
 int main(int argc, char* argv[]) {
 
     UeService* service = new UeService("UE Mock");
     // cm::Thread::sleep(2000);
-    StatisticsCounter::getInstance();
+    StsCounter::getInstance();
     SfnSfManager::getInstance()->registerService(service);
     SfnSfManager::getInstance()->start();
     service->wait();

@@ -88,8 +88,6 @@ namespace ue {
             RRC_SETUP_COMPLETE_ACK_RECVD,   //20
             RRC_SETUP_COMPLETE_NACK_RECVD,
 
-            WAIT_IDENTITY_REQUEST,
-
             RRC_CONNECTED,
             WAIT_TERMINATING
         } E_UE_STATE;
@@ -107,7 +105,6 @@ namespace ue {
             MSG3_LENGTH = 22,
             RRC_SETUP_COMPLETE_LENGTH = 504,  //TBD, depends on numRb allocated
             BSR_MSG_LENGTH = 61, //TBD, 1 RB
-            K_PHICH_FOR_TDD_UL_DL_CONFIG_2 = 6,
 
             NUM_UL_HARQ_PROCESS = 2,    // for TDD UL/DL CONFIG 2
             NUM_DL_HARQ_PROCESS = 10,
@@ -214,25 +211,12 @@ namespace ue {
         void stopContentionResolutionTimer();
         BOOL processContentionResolutionTimer();
 
-        // timer to wait harq ack
-        SInt8 m_harqTValue;
-        void startHarqTimer();
-        void stopHarqTimer();
-        BOOL processUlHarqTimer();
-
-        // timer to wait identity request after RRC setup complete harq ack recvd
-        SInt32 m_identityReqTValue;
-        void startIdentityReqTimer();
-        void stopIdentityReqTimer();
-        BOOL processIdentityReqTimer();
-
         void buildMsg3Data();
         void buildCrcData(UInt8 crcFlag);
         void buildRRCSetupComplete();
         void buildBSR(BOOL isLongBSR = FALSE);
 
         BOOL parseContentionResolutionPdu(UInt8* data, UInt32 pduLen);
-        void setSfnSfForHarqAck();
 
         BOOL parseRRCSetupPdu(UInt8* data, UInt32 pduLen);
         void setSfnSfForSR();
@@ -302,18 +286,10 @@ namespace ue {
 
         UInt16 m_rnti;
 
-        // subframe in which to send harq ack
-        UInt8 m_harqAckSf;
-        UInt8 m_harqAckSfn;
-
         // subframe in which to send SR 
         BOOL m_needSendSR;
         UInt16 m_srSfn;
         UInt8 m_srSf;
-
-        // subframe in which to send RRC setup complete
-        UInt16 m_rrcSetupCompSfn;
-        UInt8 m_rrcSetupCompSf;
     };
 
     // ------------------------------------------------------
@@ -365,22 +341,6 @@ namespace ue {
     }
 
     // ------------------------------------------------------
-    inline void UeTerminal::setSfnSfForHarqAck() {
-        // only valid for TDD DL/UL config 2
-        if (m_provSf == 4 || m_provSf == 5 || m_provSf == 6 || m_provSf == 8) {
-            m_harqAckSf = 2;
-            m_harqAckSfn = (m_provSfn + 1) % 1024;
-        } else {
-            m_harqAckSf = 7;
-            if (m_provSf == 0 || m_provSf == 1 || m_provSf == 3) {                
-                m_harqAckSfn = m_provSfn;
-            } else {
-                m_harqAckSfn = (m_provSfn + 1) % 1024;
-            }
-        }
-    }
-
-    // ------------------------------------------------------
     inline void UeTerminal::setSfnSfForSR() {
         // only valid for TDD DL/UL config 2
         if (m_sf == 2) {
@@ -402,16 +362,6 @@ namespace ue {
     // --------------------------------------------------------
     inline void UeTerminal::stopContentionResolutionTimer() {
         m_contResolutionTValue = -1;
-    }
-
-    // --------------------------------------------------------
-    inline void UeTerminal::startIdentityReqTimer() {
-        m_identityReqTValue = identityRequestTimer;
-    }
-
-    // --------------------------------------------------------
-    inline void UeTerminal::stopIdentityReqTimer() {
-        m_identityReqTValue = -1;
     }
 
     // -------------------------------------------------------
@@ -450,17 +400,6 @@ namespace ue {
     // -------------------------------------------------------
     inline void UeTerminal::stopBSRTimer() {
         m_bsrTValue = -1;
-    }
-
-    // -------------------------------------------------------
-    inline void UeTerminal::startHarqTimer() {
-        // refer to 36.213 9.1.2
-        m_harqTValue = K_PHICH_FOR_TDD_UL_DL_CONFIG_2;
-    }
-
-    // -------------------------------------------------------
-    inline void UeTerminal::stopHarqTimer() {
-        m_harqTValue = -1;
     }
 }
 

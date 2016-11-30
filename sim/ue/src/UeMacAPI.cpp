@@ -8,7 +8,7 @@
 #include "UeMacAPI.h"
 #include "CLogger.h"
 #include "UeScheduler.h"
-#include "StatisticsCounter.h"
+#include "StsCounter.h"
 
 using namespace ue;
 using namespace cm;
@@ -81,7 +81,7 @@ void UeMacAPI::handleSubFrameInd(UInt16 sfnsf) {
     // send data to L2
     this->sendData();
 
-    StatisticsCounter::getInstance()->show();
+    StsCounter::getInstance()->show();
 }
 
 // ----------------------------------------
