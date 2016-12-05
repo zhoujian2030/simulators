@@ -40,8 +40,26 @@ UeTerminal::UeTerminal(UInt8 ueId, UInt16 raRnti, UeMacAPI* ueMacAPI)
 
     m_rrcLayer = new RrcLayer(this);
     m_pdcpLayer = new PdcpLayer(m_rrcLayer);
-    m_rlcLayer = new RlcLayer(m_pdcpLayer);
+    m_rlcLayer = new RlcLayer(this, m_pdcpLayer);
     m_triggerIdRsp = FALSE;
+    m_triggerRlcStatusPdu = FALSE;
+}
+
+// ------------------------------------------------------
+void UeTerminal::reset() {
+    LOG_DEBUG(UE_LOGGER_NAME, "[UE: %d], [RA-RNTI: %d]\n", m_ueId, m_raRnti);
+    m_harqEntity->reset();
+    m_rlcLayer->reset();
+    m_pdcpLayer->reset();
+    m_rrcLayer->reset();
+    m_needSendSR = FALSE;
+    m_triggerIdRsp = FALSE;
+    m_triggerRlcStatusPdu = FALSE;
+    m_t300Value = -1;
+    m_contResolutionTValue = -1;
+    m_srTValue = -1;
+    m_bsrTValue = -1;
+    m_state = IDLE;
 }
 
 // --------------------------------------------
@@ -58,7 +76,8 @@ void UeTerminal::schedule(UInt16 sfn, UInt8 sf, UeScheduler* pUeScheduler) {
     m_sf = sf;   
 
     if (isT300Expired()) {
-        m_state = IDLE;
+        this->reset();
+        StsCounter::getInstance()->countTestFailure();
         pUeScheduler->resetUeTerminal(m_rnti, m_ueId);
         LOG_DEBUG(UE_LOGGER_NAME, "[UE: %d], [RA-RNTI: %d], %d.%d, T300 expired, reset state to IDLE\n", 
             m_ueId, m_raRnti, sfn, sf);
@@ -73,7 +92,21 @@ void UeTerminal::schedule(UInt16 sfn, UInt8 sf, UeScheduler* pUeScheduler) {
 }
 
 // --------------------------------------------
-void UeTerminal::scheduleRach(UeScheduler* pUeScheduler) {
+void UeTerminal::handleDeleteUeReq() {
+    LOG_DEBUG(UE_LOGGER_NAME, "[UE: %d], [RA-RNTI: %d], [RNTI: %d], %d.%d\n", m_ueId, m_raRnti, m_rnti, m_sfn, m_sf);
+
+    if (m_state == RRC_RELEASING) {
+        StsCounter::getInstance()->countTestSuccess();
+    } else {
+        StsCounter::getInstance()->countTestFailure();
+    }
+    m_state = WAIT_TERMINATING;
+}
+
+// --------------------------------------------
+void UeTerminal::scheduleRach(UeScheduler* pUeScheduler) {    
+    LOG_DEBUG(UE_LOGGER_NAME, "[UE: %d], [RA-RNTI: %d], %d.%d\n", m_ueId, m_raRnti, m_sfn, m_sf);
+
     if (m_state == IDLE && m_sf == m_rachSf) {
         m_rachSfn = m_sfn;
         m_raTicks = 0;
@@ -122,7 +155,8 @@ void UeTerminal::scheduleRach(UeScheduler* pUeScheduler) {
             } else {
                 LOG_ERROR(UE_LOGGER_NAME, "[UE: %d], [RA-RNTI: %d], RACH timeout\n", m_ueId, m_raRnti);
                 StsCounter::getInstance()->countRachTimeout();
-                m_state = IDLE;
+                this->reset();
+                StsCounter::getInstance()->countTestFailure();
                 pUeScheduler->resetUeTerminal(m_rnti, m_ueId);
             }
         }
@@ -131,6 +165,7 @@ void UeTerminal::scheduleRach(UeScheduler* pUeScheduler) {
 
 // --------------------------------------------
 void UeTerminal::scheduleMsg3(UeScheduler* pUeScheduler) {
+    LOG_DEBUG(UE_LOGGER_NAME, "[UE: %d], [RA-RNTI: %d], [RNTI: %d], %d.%d\n", m_ueId, m_raRnti, m_rnti, m_sfn, m_sf);
     if (m_state == MSG2_RECVD) {
         // to send MSG3 in the UL subframe
         if (m_sfn == m_msg3Sfn && m_sf == m_msg3Sf) {
@@ -144,6 +179,8 @@ void UeTerminal::scheduleMsg3(UeScheduler* pUeScheduler) {
         }
     } else if (m_state == MSG3_SENT) {
         if (processContentionResolutionTimer()) {
+            this->reset();
+            StsCounter::getInstance()->countTestFailure();
             pUeScheduler->resetUeTerminal(m_rnti, m_ueId);
         }
     } else {
@@ -153,8 +190,8 @@ void UeTerminal::scheduleMsg3(UeScheduler* pUeScheduler) {
 
 // --------------------------------------------
 void UeTerminal::scheduleSR(UeScheduler* pUeScheduler) {
-    // if (m_state == RRC_SETUP_ACK_SENT) {
-        // send SR to request UL resource for RRC setup complete
+    LOG_DEBUG(UE_LOGGER_NAME, "[UE: %d], [RA-RNTI: %d], [RNTI: %d], %d.%d\n", m_ueId, m_raRnti, m_rnti, m_sfn, m_sf);
+
     if (m_needSendSR) {
         if (m_sfn == m_srSfn && m_sf == m_srSf) {
             UInt32 msgLen = 0;
@@ -195,14 +232,13 @@ void UeTerminal::scheduleSR(UeScheduler* pUeScheduler) {
         } else {
             // TODO exception in case frame lost
         }
+    } else {
+        if (processSRTimer()) {
+            this->reset();
+            StsCounter::getInstance()->countTestFailure();
+            pUeScheduler->resetUeTerminal(m_rnti, m_ueId);
+        }
     }
-    // } else if (m_state == RRC_SETUP_COMPLETE_SR_SENT) {
-    //     if (processSRTimer()) {
-    //         pUeScheduler->resetUeTerminal(m_rnti, m_ueId);
-    //     }
-    // } else {
-    //     //TODO
-    // }
 }
 
 // --------------------------------------------
@@ -232,9 +268,8 @@ void UeTerminal::scheduleDCCH(UeScheduler* pUeScheduler) {
         {
             LOG_DEBUG(UE_LOGGER_NAME, "[UE: %d], [RA-RNTI: %d], [RNTI: %d], terminate the connection\n", 
                 m_ueId, m_raRnti, m_rnti);
-            m_harqEntity->reset();
+            this->reset();
             pUeScheduler->resetUeTerminal(m_rnti, m_ueId);
-            m_state = IDLE;
             break;
         }
 
@@ -246,6 +281,14 @@ void UeTerminal::scheduleDCCH(UeScheduler* pUeScheduler) {
                 m_harqEntity->send(this);
                 m_harqEntity->calcAndProcessUlHarqTimer(this);
             }
+
+            if (m_state == RRC_RELEASING) {
+                LOG_DEBUG(UE_LOGGER_NAME, "[UE: %d], [RA-RNTI: %d], [RNTI: %d], handle ul harq in state = %d\n", 
+                    m_ueId, m_raRnti, m_rnti, m_state);
+
+                m_harqEntity->send(this);
+                m_harqEntity->calcAndProcessUlHarqTimer(this);
+            }
             
             break;
         }
@@ -254,6 +297,7 @@ void UeTerminal::scheduleDCCH(UeScheduler* pUeScheduler) {
 
 // --------------------------------------------
 void UeTerminal::processDlHarq(UeScheduler* pUeScheduler) {
+    LOG_DEBUG(UE_LOGGER_NAME, "[UE: %d], [RA-RNTI: %d], [RNTI: %d], %d.%d\n", m_ueId, m_raRnti, m_rnti, m_sfn, m_sf);
     m_harqEntity->sendAck(m_sfn, m_sf, this);
 }
 
@@ -268,7 +312,6 @@ BOOL UeTerminal::processContentionResolutionTimer() {
 
     if (m_contResolutionTValue == 0) {
         // contention resolution timeout
-        m_state = IDLE;
         LOG_ERROR(UE_LOGGER_NAME, "[UE: %d], [RA-RNTI: %d], [RNTI: %d], Contention Resolution timeout\n", m_ueId, m_raRnti, m_rnti);
         StsCounter::getInstance()->countContentionResolutionTimeout();
         return TRUE;
@@ -288,7 +331,6 @@ BOOL UeTerminal::processSRTimer() {
         m_ueId, m_raRnti, m_rnti, m_srTValue);
     
     if (m_srTValue == 0) {
-        m_state = IDLE;
         LOG_ERROR(UE_LOGGER_NAME, "[UE: %d], [RA-RNTI: %d], [RNTI: %d], SR timeout\n", m_ueId, m_raRnti, m_rnti);
         StsCounter::getInstance()->countSRTimeout();
         return TRUE;
@@ -308,8 +350,7 @@ BOOL UeTerminal::processBSRTimer() {
         m_ueId, m_raRnti, m_rnti, m_bsrTValue);
     
     if (m_bsrTValue == 0) {
-        m_state = IDLE;
-        LOG_ERROR(UE_LOGGER_NAME, "[UE: %d], [RA-RNTI: %d], [RNTI: %d], SR timeout\n", m_ueId, m_raRnti, m_rnti);
+        LOG_ERROR(UE_LOGGER_NAME, "[UE: %d], [RA-RNTI: %d], [RNTI: %d], BSR timeout\n", m_ueId, m_raRnti, m_rnti);
         //StsCounter::getInstance()->countSRTimeout();
         return TRUE;
     }
@@ -406,6 +447,7 @@ void UeTerminal::buildMsg3Data() {
         m_ueId, m_raRnti, m_rnti, pL1Api->msgLen);
 }
 
+#define MAX_UL_TB_LENGTH 128
 // --------------------------------------------
 void UeTerminal::buildBSR(BOOL isLongBSR) {
     UInt32 msgLen = 0;
@@ -440,28 +482,48 @@ void UeTerminal::buildBSR(BOOL isLongBSR) {
         UInt8 bsr[BSR_MSG_LENGTH] = {0x3a, 0x3d, 0x1f, 0x00, 0x12};
         m_ueMacAPI->addSchPduData(bsr, pUlDataPduInd->length);
     } else {
-        if (!m_triggerIdRsp) {
+        if (!m_triggerIdRsp && !m_triggerRlcStatusPdu) {
             UInt8 longBsr[BSR_MSG_LENGTH] = {0x3E, 0x1F, 0x00, 0x00, 0x00};
             m_ueMacAPI->addSchPduData(longBsr, pUlDataPduInd->length);
         } else {
-            m_triggerIdRsp = FALSE;
-            UInt8 identityRsp[IDENTITY_MSG_LENGTH];
-            UInt32 length;
-            m_rrcLayer->buildIdentityResponse(identityRsp, length);
-            m_pdcpLayer->buildSrb1Header(identityRsp, length);   
-            m_rlcLayer->buildRlcAMDHeader(identityRsp, length); 
-            UInt8 macPdu[IDENTITY_MSG_LENGTH] = {0x3A, 0x3D, 0x21, 0x80, (UInt8)length, 0x1F, 0x0A, 0x00};
-            memcpy(macPdu + 8, identityRsp, length);
-            pUlDataPduInd->length = IDENTITY_MSG_LENGTH;
-            m_ueMacAPI->addSchPduData(macPdu, pUlDataPduInd->length);  
+            if (m_triggerIdRsp) {
+                LOG_DEBUG(UE_LOGGER_NAME, "[UE: %d], [RA-RNTI: %d], [RNTI: %d], add Identity Response\n", 
+                    m_ueId, m_raRnti, m_rnti);  
+                m_triggerIdRsp = FALSE;
+                UInt8 identityRsp[IDENTITY_MSG_LENGTH];
+                UInt32 length;
+                m_rrcLayer->buildIdentityResponse(identityRsp, length);
+                m_pdcpLayer->buildSrb1Header(identityRsp, length);   
+                m_rlcLayer->buildRlcAMDHeader(identityRsp, length); 
+
+                if (m_triggerRlcStatusPdu) {
+                    LOG_DEBUG(UE_LOGGER_NAME, "[UE: %d], [RA-RNTI: %d], [RNTI: %d], add RlC status PDU\n", 
+                        m_ueId, m_raRnti, m_rnti);
+                    m_triggerRlcStatusPdu = FALSE;
+                    UInt8 macPdu[MAX_UL_TB_LENGTH] = {0x3d, 0x21, 0x02, 0x21, 0x80,(UInt8)length, 0x1f, 0x00, m_rlcStatusPdu[0], m_rlcStatusPdu[1]};
+                    memcpy(macPdu + 10, identityRsp, length);
+                    pUlDataPduInd->length = MAX_UL_TB_LENGTH;
+                    m_ueMacAPI->addSchPduData(macPdu, pUlDataPduInd->length);  
+                } else {
+                    UInt8 macPdu[IDENTITY_MSG_LENGTH] = {0x3D, 0x21, 0x80, (UInt8)length, 0x1F, 0x00};                    
+                    memcpy(macPdu + 6, identityRsp, length);
+                    pUlDataPduInd->length = IDENTITY_MSG_LENGTH;
+                    m_ueMacAPI->addSchPduData(macPdu, pUlDataPduInd->length);  
+                }
+            } else {
+                LOG_DEBUG(UE_LOGGER_NAME, "[UE: %d], [RA-RNTI: %d], [RNTI: %d], add RlC status PDU\n", 
+                    m_ueId, m_raRnti, m_rnti);
+                m_triggerRlcStatusPdu = FALSE;
+                UInt8 macPdu[MAX_UL_TB_LENGTH] = {0x3d, 0x21, 0x02, 0x1f, 0x00, m_rlcStatusPdu[0], m_rlcStatusPdu[1]};
+                pUlDataPduInd->length = MAX_UL_TB_LENGTH;
+                m_ueMacAPI->addSchPduData(macPdu, pUlDataPduInd->length);  
+            }
         }
     }
 
     msgLen += pUlDataPduInd->length;
     pL1Api->msgLen += msgLen;
     m_ueMacAPI->addSchDataLength(msgLen);
-
-    // StsCounter::getInstance()->countRRCSetupComplSent();
 
     LOG_DEBUG(UE_LOGGER_NAME, "[UE: %d], [RA-RNTI: %d], [RNTI: %d], compose BSR, msgLen = %d\n", 
         m_ueId, m_raRnti, m_rnti, pL1Api->msgLen);  
@@ -626,6 +688,7 @@ void UeTerminal::handleDlSchPdu(FAPI_dlConfigRequest_st* pDlConfigHeader, FAPI_d
         // recv RAR SCH PDU
         m_provSf  = pDlConfigHeader->sfnsf & 0x000f;
         m_provSfn  = (pDlConfigHeader->sfnsf & 0xfff0) >> 4;
+        LOG_DEBUG(UE_LOGGER_NAME, "[UE: %d], [RA-RNTI: %d], provSfnSf = %d.%d, curSfnSf = %d.%d\n", m_ueId, m_raRnti, m_provSfn, m_provSf, m_sfn, m_sf);
         if (validateDlSfnSf(m_provSfn, m_provSf)) {
             if (m_state == MSG2_DCI_RECVD ) {
                 m_state = MSG2_SCH_RECVD;
@@ -828,8 +891,7 @@ void UeTerminal::dlHarqSchConfigCallback(UInt16 harqProcessNum, BOOL result) {
             m_state = RRC_SETUP_SCH_RECVD;
             LOG_DEBUG(UE_LOGGER_NAME, "[UE: %d], [RA-RNTI: %d], [C-RNTI: %d], recv RRC setup SCH PDU\n", m_ueId, m_raRnti, m_rnti);
         } else {
-            // TODO
-            LOG_DEBUG(UE_LOGGER_NAME, "[UE: %d], [RA-RNTI: %d], [C-RNTI: %d], recv other SCH PDU, not implemented\n", m_ueId, m_raRnti, m_rnti);
+            LOG_DEBUG(UE_LOGGER_NAME, "[UE: %d], [RA-RNTI: %d], [C-RNTI: %d], recv SCH PDU (for DL DCCH data)\n", m_ueId, m_raRnti, m_rnti);
         }
     } else {
         // if fail to process DL SCH when RRC connection not established, terminate it
@@ -1279,6 +1341,8 @@ void UeTerminal::parseMacPdu(UInt8* data, UInt32 pduLen) {
         pStart += item->length;  
         m_rlcLayer->handleRxAMDPdu(item->buffer, item->length);       
     }    
+
+    lcIdItemVect.clear();
 }
 
 
@@ -1292,20 +1356,45 @@ void UeTerminal::rrcCallback(UInt32 msgType, RrcMsg* msg) {
         {
             StsCounter::getInstance()->countIdentityRequestRecvd();
             m_triggerIdRsp = TRUE;
-            LOG_DEBUG(UE_LOGGER_NAME, "[UE: %d], [RA-RNTI: %d], [RNTI: %d], recv Identity Request, will send Identity Resp in next UL SF\n", 
+            LOG_DEBUG(UE_LOGGER_NAME, "[UE: %d], [RA-RNTI: %d], [RNTI: %d], recv Identity Request, will send Identity Resp later\n", 
                 m_ueId, m_raRnti, m_rnti);
             break;
         }
 
-        // case ATTACH_REJECT:
-        // {
+        case ATTACH_REJECT:
+        {
+            LOG_DEBUG(UE_LOGGER_NAME, "[UE: %d], [RA-RNTI: %d], [RNTI: %d], recv Attach Reject\n", 
+                m_ueId, m_raRnti, m_rnti);
+            break;
+        }
 
-        //     break;
-        // }
+        case RRC_RELEASE:
+        {
+            LOG_DEBUG(UE_LOGGER_NAME, "[UE: %d], [RA-RNTI: %d], [RNTI: %d], recv RRC Release, will free resource later\n", 
+                m_ueId, m_raRnti, m_rnti);
+            LOG_DEBUG(UE_LOGGER_NAME, "[UE: %d], [RA-RNTI: %d], [RNTI: %d], change state from %d to %d\n", 
+                m_ueId, m_raRnti, m_rnti, m_state, RRC_RELEASING);
+            m_state = RRC_RELEASING;
+            break;
+        }
 
         default:
         {
-            LOG_DEBUG(UE_LOGGER_NAME, "[UE: %d], [RA-RNTI: %d], [RNTI: %d], Unsupported msgType\n");
+            LOG_DEBUG(UE_LOGGER_NAME, "[UE: %d], [RA-RNTI: %d], [RNTI: %d], Unsupported msgType\n", m_ueId, m_raRnti, m_rnti);
         }
     }
+}
+
+// --------------------------------------------
+void UeTerminal::rlcCallback(UInt8* statusPdu, UInt32 length) {
+    LOG_DEBUG(UE_LOGGER_NAME, "[UE: %d], [RA-RNTI: %d], [RNTI: %d], need to send RLC status PDU, length = %d\n", 
+        m_ueId, m_raRnti, m_rnti, length);
+    
+    if (length != 2) {
+        LOG_WARN(UE_LOGGER_NAME, "Only support 2 bytes format RLC Status PDU now\n");
+        return;
+    }
+
+    m_triggerRlcStatusPdu = TRUE;
+    memcpy(&m_rlcStatusPdu, statusPdu, length);
 }

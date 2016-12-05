@@ -46,14 +46,16 @@ void HarqEntity::reset() {
     LOG_DEBUG(UE_LOGGER_NAME, "reset harq entity\n");
 
     map<UInt16, UInt16>::iterator ulIter = m_harqIdUlIndexMap.begin();
-    while (ulIter++ != m_harqIdUlIndexMap.end()) {
+    while (ulIter != m_harqIdUlIndexMap.end()) {
         m_ulHarqProcessList[ulIter->second]->free();
+        ulIter++;
     }
     m_harqIdUlIndexMap.clear();
 
     map<UInt32, UInt16>::iterator dlIter = m_harqIdDlIndexMap.begin();
-    while (dlIter++ != m_harqIdDlIndexMap.end()) {
+    while (dlIter != m_harqIdDlIndexMap.end()) {
         m_dlHarqProcessList[dlIter->second]->free();
+        dlIter++;
     }
     m_harqIdDlIndexMap.clear();
 }
@@ -336,6 +338,15 @@ void HarqEntity::UlHarqProcess::send(UInt16 harqId, UeTerminal* pUeTerminal) {
         } else {
             // TODO
             if (m_ueState >= UeTerminal::RRC_SETUP_COMPLETE_SENT && m_ueState <= UeTerminal::RRC_CONNECTED) {
+                pUeTerminal->buildBSR(TRUE);
+                pUeTerminal->buildCrcData(0);
+                pUeTerminal->ulHarqSendCallback(harqId, TRUE);
+                m_state = TB_SENT;
+                m_ueState = pUeTerminal->m_state;
+                startTimer();        
+            }
+
+            if (m_ueState >= UeTerminal::RRC_RELEASING) {
                 pUeTerminal->buildBSR(TRUE);
                 pUeTerminal->buildCrcData(0);
                 pUeTerminal->ulHarqSendCallback(harqId, TRUE);

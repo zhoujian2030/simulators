@@ -27,8 +27,11 @@ namespace ue {
         UeTerminal(UInt8 ueId, UInt16 raRnti, UeMacAPI* ueMacAPI);
         virtual ~UeTerminal();
 
+        void reset();
+
         void schedule(UInt16 sfn, UInt8 sf, UeScheduler* pUeScheduler);
 
+        void handleDeleteUeReq();
         void handleDlDciPdu(FAPI_dlConfigRequest_st* pDlConfigHeader, FAPI_dciDLPduInfo_st* pDlDciPdu);
         void handleDlSchPdu(FAPI_dlConfigRequest_st* pDlConfigHeader, FAPI_dlSCHConfigPDUInfo_st* pDlSchPdu);
         void handleDlTxData(FAPI_dlDataTxRequest_st* pDlDataTxHeader, FAPI_dlTLVInfo_st *pDlTlv, UeScheduler* pUeScheduler);
@@ -89,6 +92,7 @@ namespace ue {
             RRC_SETUP_COMPLETE_NACK_RECVD,
 
             RRC_CONNECTED,
+            RRC_RELEASING,
             WAIT_TERMINATING
         } E_UE_STATE;
 
@@ -239,12 +243,16 @@ namespace ue {
         void parseMacPdu(UInt8* data, UInt32 pduLen);
 
         friend class RrcLayer;
+        friend class RlcLayer;
         RlcLayer* m_rlcLayer; 
         RrcLayer* m_rrcLayer;
         PdcpLayer* m_pdcpLayer;
         void rrcCallback(UInt32 msgType, RrcMsg* msg);
+        void rlcCallback(UInt8* statusPdu, UInt32 length);
 
         BOOL m_triggerIdRsp;
+        BOOL m_triggerRlcStatusPdu;
+        UInt8 m_rlcStatusPdu[2];
 
         static const UInt8 m_ulSubframeList[10];
 
@@ -274,14 +282,14 @@ namespace ue {
         // MAC will free temp rnti resource if not receive MSG3 before
         // tick 1.6 without retransmitting RAR.
         UInt8 m_msg3Sf;
-        UInt8 m_msg3Sfn;
+        UInt16 m_msg3Sfn;
         Msg3 m_msg3;
 
         UInt16 m_sfn;
         UInt8 m_sf;
 
         // UInt16 m_provSfnSf;
-        UInt8 m_provSfn;
+        UInt16 m_provSfn;
         UInt8 m_provSf;
 
         UInt16 m_rnti;

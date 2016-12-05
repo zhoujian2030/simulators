@@ -19,12 +19,18 @@ namespace ue {
         PdcpLayer(RrcLayer* rrcLayer);
         ~PdcpLayer();
 
+        void reset();
+
         void handleRxSrb(UInt8* buffer, UInt32 length);
         void buildSrb1Header(UInt8* buffer, UInt32& length);
 
     private:
         RrcLayer* m_rrcLayer;
     };
+
+    inline void PdcpLayer::reset() {
+        
+    }
 }
 
 #endif

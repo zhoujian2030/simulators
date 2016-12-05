@@ -54,6 +54,8 @@ typedef uint8_t FAPI_msgIdType_t;
 #define PHY_UL_SRS_INDICATION          0x89
 #define PHY_UL_RX_SR_INDICATION        0x8a
 #define PHY_UL_RX_CQI_INDICATION       0x8b
+#define PHY_DELETE_UE_REQUEST          0xf0
+
 /* +DYNAMIC_ICIC */
 #define PHY_MEASUREMENT_REPORT_INDICATION 0x96
 /* -DYNAMIC_ICIC */

@@ -50,7 +50,11 @@ void UeScheduler::processDlData(UInt8* buffer, SInt32 length) {
 
     FAPI_l1ApiMsg_st *pL1Api = (FAPI_l1ApiMsg_st *)buffer;
 
-    if (pL1Api->msgId == PHY_UL_CONFIG_REQUEST) {
+    if (pL1Api->msgId == PHY_DELETE_UE_REQUEST) {
+        LOG_DEBUG(UE_LOGGER_NAME, "recv PHY_DELETE_UE_REQUEST in %d.%d\n", m_sfn, m_sf);
+        UInt16* rnti = (UInt16*)pL1Api->msgBody;
+        handleDeleteUeReq(*rnti);
+    } else if (pL1Api->msgId == PHY_UL_CONFIG_REQUEST) {
         memcpy(m_ulCfgMsg.data, buffer, length);
         m_ulCfgMsg.length = length;
         LOG_DEBUG(UE_LOGGER_NAME, "save PHY_UL_CONFIG_REQUEST, in %d.%d\n", m_sfn, m_sf);
@@ -78,6 +82,29 @@ void UeScheduler::processDlData(UInt8* buffer, SInt32 length) {
                 break;
             }
         }  
+    }
+}
+
+// ----------------------------------------
+void UeScheduler::handleDeleteUeReq(UInt16 rnti) {
+    LOG_DEBUG(UE_LOGGER_NAME, "delete rnti = %d\n", rnti);
+
+    if (rnti <= m_maxRaRntiUeId) {
+        // For RAR, rnti is ra-rnti, which is the same as ueId
+        m_ueList[rnti-1]->handleDeleteUeReq();
+    } else {
+        // other msg, c-rnti
+        map<UInt16, UInt8>::iterator it = m_rntiUeIdMap.find(rnti);
+        if (it != m_rntiUeIdMap.end()) {
+            UInt8 ueId = it->second;
+            if (ueId <= m_maxRaRntiUeId) {
+                m_ueList[ueId-1]->handleDeleteUeReq();
+            } else {
+                LOG_ERROR(UE_LOGGER_NAME, "Invalid ueId = %d\n", ueId);
+            }
+        } else {
+            LOG_ERROR(UE_LOGGER_NAME, "Fail to get ueId by rnti = %d\n", rnti);
+        }
     }
 }
 
@@ -179,6 +206,34 @@ void UeScheduler::processData() {
         } else {
             LOG_DEBUG(UE_LOGGER_NAME, "stop handling\n");
             break;
+        }
+    }
+}
+
+// --------------------------------------------------------
+void UeScheduler::resetUeTerminal(UInt16 rnti, UInt8 ueId) {
+    LOG_DEBUG(UE_LOGGER_NAME, "rnti = %d, ueId = %d, %d.%d\n", rnti, ueId, m_sfn, m_sf);
+
+    std::map<UInt16, UInt8>::iterator it = m_rntiUeIdMap.find(rnti);
+    if (it != m_rntiUeIdMap.end()) {
+        m_rntiUeIdMap.erase(it);
+    }
+
+    it = m_pduIndexUeIdMap.begin();
+    while (it != m_pduIndexUeIdMap.end()) {
+        if (it->second == ueId) {
+            m_pduIndexUeIdMap.erase(it++);
+        } else {
+            it++;
+        }
+    }
+
+    it = m_harqIdUeIdMap.begin();
+    while (it != m_harqIdUeIdMap.end()) {
+        if (it->second == ueId) {
+            m_harqIdUeIdMap.erase(it++);
+        } else {
+            it++;
         }
     }
 }

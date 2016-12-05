@@ -14,7 +14,7 @@ StsCounter* StsCounter::m_theInstance = 0;
 
 // ------------------------------------------------
 StsCounter::StsCounter() 
-: m_rachSent(0), m_rachTimeout(0), /*m_rachTimeoutMissSchPdu(0),
+: m_succTest(0), m_failureTest(0), m_rachSent(0), m_rachTimeout(0), /*m_rachTimeoutMissSchPdu(0),
   m_rarDciRecvd(0), m_rarDciInvalid()0, */m_rarRecvd(0), m_rarInvalid(0),
   m_msg3UlCfgRecvd(0), m_msg3Sent(0), m_msg3CrcSent(0), m_contentionResolutionRecvd(0),
   m_contentionResolutionInvalid(0), m_contentionResolutionTimeout(0), m_harqAckSent(0),
@@ -44,30 +44,32 @@ StsCounter* StsCounter::getInstance() {
 void StsCounter::show() {
     LOG_INFO(UE_LOGGER_NAME, "==========================================\n");
 
+    LOG_INFO(UE_LOGGER_NAME, " Num Success Test:                     %d\n", m_succTest);
+    LOG_INFO(UE_LOGGER_NAME, " Num Failure Test:                     %d\n", m_failureTest);
     LOG_INFO(UE_LOGGER_NAME, " Num RACH sent:                        %d\n", m_rachSent);
-    LOG_INFO(UE_LOGGER_NAME, " Num RACH timeout:                     %d\n", m_rachTimeout);
     LOG_INFO(UE_LOGGER_NAME, " Num RAR received:                     %d\n", m_rarRecvd);
-    LOG_INFO(UE_LOGGER_NAME, " Num RAR invalid:                      %d\n", m_rarInvalid);
     LOG_INFO(UE_LOGGER_NAME, " Num MSG3 UL CFG received:             %d\n", m_msg3UlCfgRecvd);
     LOG_INFO(UE_LOGGER_NAME, " Num MSG3 sent:                        %d\n", m_msg3Sent);
     LOG_INFO(UE_LOGGER_NAME, " Num MSG3 CRC sent:                    %d\n", m_msg3CrcSent);
     LOG_INFO(UE_LOGGER_NAME, " Num Contention Resolution received:   %d\n", m_contentionResolutionRecvd);
-    LOG_INFO(UE_LOGGER_NAME, " Num Contention Resolution invalid:    %d\n", m_contentionResolutionInvalid);
-    LOG_INFO(UE_LOGGER_NAME, " Num Contention Resolution timeout:    %d\n", m_contentionResolutionTimeout);
     LOG_INFO(UE_LOGGER_NAME, " Num RRC setup received:               %d\n", m_rrcSetupRecvd);
-    LOG_INFO(UE_LOGGER_NAME, " Num RRC setup invalid:                %d\n", m_rrcSetupInvalid);
     LOG_INFO(UE_LOGGER_NAME, " Num HARQ ACK sent:                    %d\n", m_harqAckSent);
     LOG_INFO(UE_LOGGER_NAME, " Num SR sent:                          %d\n", m_srSent);
-    LOG_INFO(UE_LOGGER_NAME, " Num SR timeout:                       %d\n", m_srTimeout);
     LOG_INFO(UE_LOGGER_NAME, " Num RRC setup complete DCI0 recvd:    %d\n", m_rrcSetupComplDCI0Recvd);
     LOG_INFO(UE_LOGGER_NAME, " Num RRC setup complete UL CFG recvd:  %d\n", m_rrcSetupComplUlCfgRecvd);
     LOG_INFO(UE_LOGGER_NAME, " Num RRC setup complete sent:          %d\n", m_rrcSetupComplSent);
     LOG_INFO(UE_LOGGER_NAME, " Num RRC setup complete CRC sent:      %d\n", m_rrcSetupComplCrcSent);
+    LOG_INFO(UE_LOGGER_NAME, " Num HARQ ACK received:                %d\n", m_harqAckRecvd);
+    LOG_INFO(UE_LOGGER_NAME, " Num Identity Request recvd:           %d\n", m_identityReqRecvd);
+    LOG_INFO(UE_LOGGER_NAME, " Num RACH timeout:                     %d\n", m_rachTimeout);
+    LOG_INFO(UE_LOGGER_NAME, " Num RAR invalid:                      %d\n", m_rarInvalid);
+    LOG_INFO(UE_LOGGER_NAME, " Num Contention Resolution invalid:    %d\n", m_contentionResolutionInvalid);
+    LOG_INFO(UE_LOGGER_NAME, " Num Contention Resolution timeout:    %d\n", m_contentionResolutionTimeout);
+    LOG_INFO(UE_LOGGER_NAME, " Num RRC setup invalid:                %d\n", m_rrcSetupInvalid);
+    LOG_INFO(UE_LOGGER_NAME, " Num SR timeout:                       %d\n", m_srTimeout);
     LOG_INFO(UE_LOGGER_NAME, " Num RRC setup complete HARQ timeout:  %d\n", m_rrcSetupComplHarqTimeout);
     LOG_INFO(UE_LOGGER_NAME, " Num HARQ timeout:                     %d\n", m_harqTimeout);    
-    LOG_INFO(UE_LOGGER_NAME, " Num HARQ ACK received:                %d\n", m_harqAckRecvd);
     LOG_INFO(UE_LOGGER_NAME, " Num HARQ NACK received:               %d\n", m_harqNAckRecvd);
-    LOG_INFO(UE_LOGGER_NAME, " Num Identity Request recvd:           %d\n", m_identityReqRecvd);
     LOG_INFO(UE_LOGGER_NAME, " Num Identity Request timeout:         %d\n", m_identityReqTimeout);
 
     LOG_INFO(UE_LOGGER_NAME, "===========================================\n"); 

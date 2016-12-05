@@ -20,6 +20,9 @@ namespace ue {
 
         void show();
 
+        void countTestSuccess();
+        void countTestFailure();
+
         void countRachSent();
         void countRachTimeout();
         void countRarRecvd();
@@ -50,6 +53,9 @@ namespace ue {
         StsCounter();
 
         static StsCounter* m_theInstance;
+
+        UInt32 m_succTest;
+        UInt32 m_failureTest;
 
         UInt32 m_rachSent;
         UInt32 m_rachTimeout;
@@ -86,6 +92,16 @@ namespace ue {
         UInt32 m_identityReqRecvd;
         UInt32 m_identityReqTimeout;
     };
+
+    // -----------------------------------------
+    inline void StsCounter::countTestSuccess() {
+        m_succTest++;
+    }
+
+    // -----------------------------------------
+    inline void StsCounter::countTestFailure() {
+        m_failureTest++;
+    }
 
     // -----------------------------------------
     inline void StsCounter::countRachSent() {

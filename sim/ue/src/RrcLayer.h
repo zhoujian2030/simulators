@@ -51,6 +51,8 @@ namespace ue {
         RrcLayer(UeTerminal* ue);
         ~RrcLayer();
 
+        void reset();
+
         void handleRxRRCMessage(UInt8* buffer, UInt32 length);
 
         void buildIdentityResponse(UInt8* buffer, UInt32& length);
@@ -60,6 +62,10 @@ namespace ue {
 
         UeTerminal* m_ueTerminal;
     };
+
+    inline void RrcLayer::reset() {
+        
+    }
 }
 
 #endif

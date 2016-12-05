@@ -2,8 +2,8 @@
 autonumber
 title basic flow
 
-participant "UE" as ue
-participant "PHY" as phy
+participant "Mock UE" as ue
+participant "Mock PHY" as phy
 participant "Network" as nw
 
 note over ue, nw
@@ -37,7 +37,9 @@ nw --> phy : [**2.1**] UCI_HARQ (Cfg PHY to recv HARQ)
 ue -> nw : [**2.2**] HARQ ACK
 
 note over ue, nw
-Network sends RRC Setup
+Network sends RRC Setup.
+Which SFN/SF to send RRC setup in MAC depends on the time 
+receiving RRC setup from RRC
 end note
 
 nw -> phy : [**2.6**] DL DCI Format 1a, C-RNTI = TC-RNTI
@@ -58,13 +60,84 @@ nw -> ue : [**4.3**] UL DCI0 (1 RB)
 nw -> phy : [**4.6**] UL SCH 
 ue -> nw : [**4.7**] BSR
 
+nw -> phy : [**4.8**] DL DCI format  1 + DL SCH
+nw -> ue : [**5.0**] MAC Timing Advance Command
+
 note over ue, nw
 Network schedules UL resource for RRC Setup complete according
 to BSR value received, also HARQ ACK for BSR is sent together
 end note
 
-nw -> ue : [**5.3**] HARQ ACK / UL DCI0 (8 RB)
-nw -> phy : [**5.6**] UL SCH 
+nw -> ue : [**5.3**] HARQ ACK (For BSR) / UL DCI0 (8 RB)
+nw -> phy : [**5.6**] UL SCH (For receiving RRC setup complete)
 ue -> nw : [**5.7**] RRC Setup Complete
+ue -> nw : [**5.7**] HARQ ACK (for TA Command)
+
+note over ue, nw
+Network send force UL grant to allocate UL resource 
+end note
+
+nw --> ue : [**5.8**] DCI0 (10 RB)
+
+note over ue, nw
+MAC schedules Identity Request when receives msg from RRC 
+end note
+
+nw -> phy : [**5.9**] DL DCI format 1a + DL SCH 
+nw -> ue : [**6.1**] Identity Request (RLC seg 1)
+nw -> phy : [**6.1**] DL DCI format 1a + DL SCH 
+nw --> phy : [**6.1**] UL SCH (for UL DCCH data)
+ue --> nw : [**6.2**] Zero Long BSR 
+nw -> ue : [**6.3**] Identity Request (RLC seg 2, need ACK)
+
+nw -> ue : [**6.3**] HARQ ACK (for RRC setup complete)
+
+note over ue, nw
+Network continues to send force UL grant to allocate UL resource 
+end note
+nw --> ue : [**6.3**] DCI0 (16 RB)
+nw --> phy : [**6.6**] UL SCH (for UL DCCH data)
+ue -> nw : [**6.7**] HARQ ACK (for Identity Request seg 1 & seg 2)
+ue -> nw : [**6.7**] Identity Response + RLC ACK (for Identity Request seg 2)
+
+note over ue, nw
+Network continues to send force UL grant to allocate UL resource 
+end note
+nw -> ue : [**6.8**] HARQ ACK (for Zero Long BSR sent in 6.2)
+nw --> ue : [**6.8**] DCI0 (60 RB)
+
+note over ue, nw
+Network sends Attach Reject & RRC Release after Identity Responose received
+end note
+
+nw -> phy : [**6.8**] DL DCI format  1 + DL SCH (for TA command)
+nw -> phy : [**6.9**] DL DCI format 1a + DL SCH (for attach reject & rrc release)
+nw -> ue : [**7.0**] MAC Timing Advance Command
+nw -> ue : [**7.1**] Attach Reject + RRC Release (need RLC ACK)
+
+nw -> phy : [**7.1**] UL SCH (for UL DCCH data)
+ue -> nw : [**7.2**] Zero Short BSR + RLC ACK (for Attach Reject & RRC Release)
+
+note over ue, nw
+Network continues to send force UL grant to allocate UL resource 
+end note
+nw -> ue : [**7.3**] HARQ ACK (for Identity Response sent in 6.7)
+nw --> ue : [**7.3**] DCI0 (60 RB)
+
+note over ue, nw
+Network delete ue context
+end note
+
+nw -> ue : [**7.3**] Delete Phy UE Context 
+ue -> ue : free resource
+
+note over ue
+Terminate the connection, 
+reset state to idle, prepare
+next RACH indication in 
+next subframe 1
+end note
+
+ue -> nw : [8.1] RACH, RA-RNTI, preamble
 
 @enduml

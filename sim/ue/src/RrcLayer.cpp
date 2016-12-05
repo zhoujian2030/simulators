@@ -75,11 +75,25 @@ UInt32 RrcLayer::decode(UInt8* buffer, UInt32 length, RrcMsg* rrcMsg) {
                 if (protocolDiscriminator == 0x07) {
                     firstByte = buffer[idx++];
                     UInt8 nasMsgType = ((firstByte & 0x07) << 5) | ((buffer[idx++] >> 3) & 0x1f);  // 3a a8
-                    if (nasMsgType == 0x55) {
-                        msgType = IDENTITY_REQUEST;
-                        rrcMsg->identityReq.identityType = (buffer[idx] >> 3) & 0x0f;
-                    } else {
-                        LOG_DEBUG(UE_LOGGER_NAME, "other NAS message: 0x%02x\n", nasMsgType);
+                    switch (nasMsgType) {
+                        case 0x55:
+                        {
+                            msgType = IDENTITY_REQUEST;
+                            rrcMsg->identityReq.identityType = (buffer[idx] >> 3) & 0x0f;
+                            break;
+                        }
+
+                        case 0x44:
+                        {
+                            msgType = ATTACH_REJECT;
+                            break;
+                        }
+
+                        default:
+                        {
+                            LOG_DEBUG(UE_LOGGER_NAME, "other NAS message: 0x%02x\n", nasMsgType);
+                            break;
+                        }
                     }
                 }
             }
