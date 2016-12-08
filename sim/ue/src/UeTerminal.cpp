@@ -635,6 +635,8 @@ void UeTerminal::handleDlDciPdu(FAPI_dlConfigRequest_st* pDlConfigHeader, FAPI_d
         LOG_WARN(UE_LOGGER_NAME, "[UE: %d], [RA-RNTI: %d], UE in idle state, drop the data\n", m_ueId, m_raRnti);
         return;
     }
+
+    displayDciPduInfo(pDlDciPdu);
     
     UInt8 sf  = pDlConfigHeader->sfnsf & 0x000f;
     UInt16 sfn  = (pDlConfigHeader->sfnsf & 0xfff0) >> 4;
@@ -653,22 +655,35 @@ void UeTerminal::handleDlDciPdu(FAPI_dlConfigRequest_st* pDlConfigHeader, FAPI_d
         // recv other DL DCI PDU
         if (validateDlSfnSf(sfn, sf)) {
             m_harqEntity->allocateDlHarqProcess(pDlConfigHeader->sfnsf, pDlDciPdu, this);
-            // if (m_state == MSG3_SENT) {
-            //     m_state = MSG4_DCI_RECVD;
-            //     LOG_DEBUG(UE_LOGGER_NAME, "[UE: %d], [RA-RNTI: %d], [C-RNTI: %d], recv Contention resolution DCI pdu\n",
-            //         m_ueId, m_raRnti, rnti);
-            // } else if (m_state == MSG4_ACK_SENT){
-            //     m_state = RRC_SETUP_DCI_RECVD;
-            //     LOG_DEBUG(UE_LOGGER_NAME, "[UE: %d], [RA-RNTI: %d], [C-RNTI: %d], recv RRC setup DCI pdu\n",
-            //         m_ueId, m_raRnti, rnti);
-            // } else {
-            //     // TODO
-            //     LOG_DEBUG(UE_LOGGER_NAME, "[UE: %d], [RA-RNTI: %d], [C-RNTI: %d], other DL DCI pdu\n",
-            //         m_ueId, m_raRnti, rnti);
-            // }
         } else {
             LOG_WARN(UE_LOGGER_NAME, "[UE: %d], [RA-RNTI: %d], [C-RNTI: %d], invalid time config for DL DCI pdu\n", 
                 m_ueId, m_raRnti, rnti);
+        }
+    }
+}
+
+// --------------------------------------------
+void UeTerminal::displayDciPduInfo(FAPI_dciDLPduInfo_st* pDlDciPdu) {
+    switch (pDlDciPdu->dciFormat) {
+        case FAPI_DL_DCI_FORMAT_1:
+        {
+            FAPI_dciFormat1_st *pDciMsg = (FAPI_dciFormat1_st *)&pDlDciPdu->dciPdu[0];
+            LOG_DEBUG(UE_LOGGER_NAME, "[UE: %d], FAPI_DL_DCI_FORMAT_1, aggregationLevel = %d, mcs_1 = %d, tpc = %d, txPower = %d\n", 
+                m_ueId, pDciMsg->aggregationLevel, pDciMsg->mcs_1, pDciMsg->tpc, pDciMsg->txPower);
+            break;
+        }
+
+        case FAPI_DL_DCI_FORMAT_1A:
+        {
+            FAPI_dciFormat1A_st *pDciMsg = (FAPI_dciFormat1A_st *)&pDlDciPdu->dciPdu[0];
+            LOG_DEBUG(UE_LOGGER_NAME, "[UE: %d], FAPI_DL_DCI_FORMAT_1A, aggregationLevel = %d, mcs_1 = %d, tpc = %d, txPower = %d\n", 
+                m_ueId, pDciMsg->aggregationLevel, pDciMsg->mcs_1, pDciMsg->tpc, pDciMsg->txPower);
+            break;
+        }
+
+        default:
+        {
+            LOG_DEBUG(UE_LOGGER_NAME, "[UE: %d], other dciFormat = %d\n", m_ueId, pDlDciPdu->dciFormat);
         }
     }
 }
@@ -1274,7 +1289,8 @@ void UeTerminal::parseMacPdu(UInt8* data, UInt32 pduLen) {
     UInt32 numBytesParsed = 0;
     UInt8 lcId;
     UInt8 ext = 1;
-    UInt16 length = 0;
+    UInt16 sumLength = 0;
+    BOOL isPaddingBegin = ((*pStart & 0x1f) == PADDING);
     vector<LcIdItem> lcIdItemVect;
 
     while ((pStart < pEnd) && (ext == 1)) {
@@ -1299,11 +1315,17 @@ void UeTerminal::parseMacPdu(UInt8* data, UInt32 pduLen) {
             {
                 LcIdItem item;
                 item.lcId = lcId;
-                UInt8 fbit = *pStart & 0x80;
-                if (fbit == 0) {
-                    item.length = (*pStart++) & 0x7f;
+                if (ext) {
+                    UInt8 fbit = *pStart & 0x80;
+                    if (fbit == 0) {
+                        item.length = (*pStart++) & 0x7f;
+                    } else {
+                        item.length = (((*pStart++) & 0x7f) << 8) | (*pStart++);
+                    }
+                    sumLength += item.length;
                 } else {
-                    item.length = (((*pStart++) & 0x7f) << 8) | (*pStart++);
+                    // The last MAC Header does not need length indicator
+                    item.length = pEnd - pStart - sumLength; 
                 }
                 lcIdItemVect.push_back(item);
                 break;
