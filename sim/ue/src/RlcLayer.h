@@ -58,6 +58,7 @@ namespace ue {
             UInt8 buffer[MAX_RLC_AMD_SDU_SEG_LENGTH];
             UInt16 length;
             UInt8 sn;
+            UInt8 e;
 
             Node* next;
             Node* prev;
@@ -144,7 +145,7 @@ namespace ue {
     private:
 
         void reassembleAMDPdu(AmdHeader* header, UInt8* buffer, UInt32 length);
-        void handleExtentionField(UInt8 ext, UInt8* buffer, UInt32 length);
+        void handleExtField(UInt32& sduLength, UInt8* buffer, UInt32 length);
         void freeAllSegments();
 
         RrcSetupConfig m_rrcSetupConfig;

@@ -12,7 +12,7 @@
 #include <map>
 
 #define MAC_UE_SUPPORTED 50
-#define DL_MSG_CONTAINER_SIZE 3 * 3
+#define DL_MSG_CONTAINER_SIZE 4 * 4
 
 namespace ue {
 
@@ -41,6 +41,9 @@ namespace ue {
         void resetUeTerminal(UInt16 rnti, UInt8 ueId);
 
     private:
+
+        BOOL validateSfnSf(BOOL isULCfg, UInt16 sfn, UInt8 sf);
+
         static const UInt16 m_maxRaRntiUeId = MAC_UE_SUPPORTED;
         UInt16 m_sfn;
         UInt8  m_sf;

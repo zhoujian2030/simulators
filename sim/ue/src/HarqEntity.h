@@ -27,6 +27,7 @@ namespace ue {
         // API of UL HARQ
         BOOL allocateUlHarqProcess(FAPI_dlHiDCIPduInfo_st* pHIDci0Header, FAPI_dlDCIPduInfo_st* pDci0Pdu, UeTerminal* pUeTerminal);
         void send(UeTerminal* pUeTerminal);     
+        UInt8 getNumPreparedUlHarqProcess();
         void handleAckNack(FAPI_dlHiDCIPduInfo_st* pHIDci0Header, FAPI_dlHiPduInfo_st* pHiPdu, UeTerminal* pUeTerminal);  
         void calcAndProcessUlHarqTimer(UeTerminal* pUeTerminal);
         void handleUlSchConfig(UInt16 sfnsf, void* ulSchPdu, UeTerminal* pUeTerminal);
@@ -78,14 +79,17 @@ namespace ue {
             UlHarqProcess(UInt16 index);
             ~UlHarqProcess();
 
-            BOOL isFree() const;                       
+            BOOL isFree() const;                     
+            BOOL isPrepareSending() const;  
             void free();
 
-            void prepareSending(UInt16 sfn, UInt8 sf, UInt8 ueState);
+            void prepareSending(FAPI_dlDCIPduInfo_st* pDci0Pdu, UInt16 sfn, UInt8 sf, UInt8 ueState);
             void send(UInt16 harqId, UeTerminal* pUeTerminal);
             BOOL handleAckNack(UInt16 harqId, UInt16 sfnsf, UInt8 hiValue, UeTerminal* pUeTerminal);
             BOOL calcAndProcessTimer(UInt16 harqId, UeTerminal* pUeTerminal);
             void handleUlSchConfig(UInt16 harqId, UInt16 sfnsf, UeTerminal* pUeTerminal);
+
+            UInt8 getAllocatedRB() const;
 
         private:
             enum UL_HARQ_PROCESS_STATE {
@@ -110,6 +114,9 @@ namespace ue {
             SInt8 m_timerValue;
             void startTimer();
             void stopTimer();
+
+            UInt8 m_numRb;
+            UInt8 m_mcs;
         };
         
 
@@ -130,9 +137,19 @@ namespace ue {
         return (m_state == IDLE);
     }
 
+    // -------------------------------------------
+    inline BOOL HarqEntity::UlHarqProcess::isPrepareSending() const {
+        return (m_state == PREPARE_SENDING);
+    }
+
+    // -------------------------------------------
+    inline UInt8 HarqEntity::UlHarqProcess::getAllocatedRB() const {
+        return m_numRb;
+    }
+
     // -------------------------------------------    
     inline void HarqEntity::UlHarqProcess::startTimer() {
-        m_timerValue = K_PHICH_FOR_TDD_UL_DL_CONFIG_2;
+        m_timerValue = K_PHICH_FOR_TDD_UL_DL_CONFIG_2 + 1;
     }
 
     // -------------------------------------------    

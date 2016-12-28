@@ -38,6 +38,7 @@ namespace ue {
         void displayDciPduInfo(FAPI_dciDLPduInfo_st* pDlDciPdu); 
 
         void handleUlSchPdu(FAPI_ulConfigRequest_st* pUlConfigHeader, FAPI_ulSCHPduInfo_st* pUlSchPdu);
+        void displayUlSchPduInfo(FAPI_ulSCHPduInfo_st* pUlSchPdu);
 
         void handleDci0Pdu(FAPI_dlHiDCIPduInfo_st* pHIDci0Header, FAPI_dlDCIPduInfo_st* pDci0Pdu);
         void handleHIPdu(FAPI_dlHiDCIPduInfo_st* pHIDci0Header, FAPI_dlHiPduInfo_st* pHiPdu);
@@ -52,8 +53,7 @@ namespace ue {
         // ------------------------------------------
         // callback functions of ul harq process
         void allocateUlHarqCallback(UInt16 harqId, BOOL result);
-        // result TRUE: send success, FALSE: send fail
-        void ulHarqSendCallback(UInt16 harqId, BOOL result);
+        void ulHarqSendCallback(UInt16 harqId, UInt8 numRb, UInt8 mcs, UInt8& ueState);
         // result TRUE: ack, FALSE: nack
         void ulHarqResultCallback(UInt16 harqId, BOOL result, UInt8 ueState);
         void ulHarqTimeoutCallback(UInt16 harqId, UInt8 ueState);
@@ -122,6 +122,7 @@ namespace ue {
             raResponseWindowSize = 7,   // from SIB2
             macContentionResolutionTimer = 48, // from SIB2
             srPeriodicity = 40,  // from RRC setup
+            srConfigIndex = 72,
             identityRequestTimer = 1000,  // self-defined
             tddAckNackFeedbackMode = 0,  // bundling mode, from RRC setup
             bsrTimer = 40   // self-defined TODO
@@ -219,12 +220,13 @@ namespace ue {
         void buildMsg3Data();
         void buildCrcData(UInt8 crcFlag);
         void buildRRCSetupComplete();
-        void buildBSR(BOOL isLongBSR = FALSE);
+        void buildBSRAndData(BOOL isLongBSR = FALSE);
 
         BOOL parseContentionResolutionPdu(UInt8* data, UInt32 pduLen);
 
         BOOL parseRRCSetupPdu(UInt8* data, UInt32 pduLen);
         void setSfnSfForSR();
+        void requestUlResource();
 
         friend class HarqEntity;
 
@@ -234,11 +236,13 @@ namespace ue {
         SInt8 m_srTValue;
         void startSRTimer();
         void stopSRTimer();
+        BOOL isSRSent();
         BOOL processSRTimer();
 
         SInt8 m_bsrTValue;
         void startBSRTimer();
         void stopBSRTimer();
+        BOOL isNonZeroBSRSent();
         BOOL processBSRTimer();
 
         void parseMacPdu(UInt8* data, UInt32 pduLen);
@@ -349,20 +353,6 @@ namespace ue {
         }
     }
 
-    // ------------------------------------------------------
-    inline void UeTerminal::setSfnSfForSR() {
-        // only valid for TDD DL/UL config 2
-        if (m_sf == 2) {
-            m_srSf = 7;
-            m_srSfn = m_sfn;
-        } else {
-            m_srSf = 2;
-            m_srSfn = (m_sfn + 1) % 1024;
-        }
-
-        m_needSendSR = TRUE;
-    }
-
     // --------------------------------------------------------
     inline void UeTerminal::startContentionResolutionTimer() {
         m_contResolutionTValue = macContentionResolutionTimer;
@@ -401,6 +391,12 @@ namespace ue {
         m_srTValue = -1;
     }
 
+    
+    // -------------------------------------------------------
+    inline BOOL UeTerminal::isSRSent() {
+        return ((m_srTValue > 0) && (m_srTValue <= srPeriodicity));
+    }
+
     // -------------------------------------------------------
     inline void UeTerminal::startBSRTimer() {
         m_bsrTValue = bsrTimer;
@@ -409,6 +405,11 @@ namespace ue {
     // -------------------------------------------------------
     inline void UeTerminal::stopBSRTimer() {
         m_bsrTValue = -1;
+    }
+
+    // -------------------------------------------------------
+    inline BOOL UeTerminal::isNonZeroBSRSent() {
+        return ((m_bsrTValue > 0) && (m_bsrTValue <= bsrTimer));
     }
 }
 

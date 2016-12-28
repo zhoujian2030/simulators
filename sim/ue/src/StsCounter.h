@@ -48,6 +48,14 @@ namespace ue {
         void countHarqNAckRecvd();
         void countIdentityRequestRecvd();
         void countIdentityRequestTimeout();
+        void countIdentityResponseSent(); 
+        void countAttachRejectRecvd();
+        void countRRCRelRecvd();
+        void countT300Timeout();
+        void countNonConsecutiveSfnSf();
+        void countTACmdRecvd();
+        void countForceULGrantRecvd();
+        void countBSRTimeout();
 
     private:
         StsCounter();
@@ -91,7 +99,39 @@ namespace ue {
 
         UInt32 m_identityReqRecvd;
         UInt32 m_identityReqTimeout;
+        UInt32 m_identityRespSent;
+        UInt32 m_attachRejectRecvd;
+        UInt32 m_rrcReleaseRecvd;
+
+        UInt32 m_t300Timeout;
+
+        UInt32 m_nonConsecutiveSfnSf;
+
+        UInt32 m_numTACmdRecvd;
+        UInt32 m_numForceULGrantRecvd;
+
+        UInt32 m_numBsrTimeout;
     };
+
+    // -----------------------------------------
+    inline void StsCounter::countBSRTimeout() {
+        m_numBsrTimeout++;
+    }
+
+    // -----------------------------------------
+    inline void StsCounter::countTACmdRecvd() {
+        m_numTACmdRecvd++;
+    }
+
+    // -----------------------------------------
+    inline void StsCounter::countForceULGrantRecvd() {
+        m_numForceULGrantRecvd++;
+    }
+
+    // -----------------------------------------
+    inline void StsCounter::countNonConsecutiveSfnSf() {
+        m_nonConsecutiveSfnSf++;
+    }
 
     // -----------------------------------------
     inline void StsCounter::countTestSuccess() {
@@ -228,6 +268,27 @@ namespace ue {
     inline void StsCounter::countIdentityRequestRecvd() {
         m_identityReqRecvd++;
     }
+
+    // -----------------------------------------
+    inline void StsCounter::countIdentityResponseSent() {
+        m_identityRespSent++;
+    }
+
+    // -----------------------------------------
+    inline void StsCounter::countAttachRejectRecvd() {
+        m_attachRejectRecvd++;
+    }
+
+    // -----------------------------------------
+    inline void StsCounter::countRRCRelRecvd() {
+        m_rrcReleaseRecvd++;
+    }
+
+    // -----------------------------------------
+    inline void StsCounter::countT300Timeout() {
+        m_t300Timeout++;
+    }
+
 }
 
 #endif

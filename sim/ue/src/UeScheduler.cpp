@@ -45,20 +45,25 @@ void UeScheduler::updateSfnSf(UInt16 sfn, UInt8 sf) {
 }
 
 // ----------------------------------------
+#define GENERATE_SUBFRAME_SFNSF(sfn,sf) ( ( (sfn) << 4) | ( (sf) & 0xf) )
 void UeScheduler::processDlData(UInt8* buffer, SInt32 length) {
     LOG_DEBUG(UE_LOGGER_NAME, "Entry \n");
 
     FAPI_l1ApiMsg_st *pL1Api = (FAPI_l1ApiMsg_st *)buffer;
 
-    if (pL1Api->msgId == PHY_DELETE_UE_REQUEST) {
-        LOG_DEBUG(UE_LOGGER_NAME, "recv PHY_DELETE_UE_REQUEST in %d.%d\n", m_sfn, m_sf);
-        UInt16* rnti = (UInt16*)pL1Api->msgBody;
-        handleDeleteUeReq(*rnti);
-    } else if (pL1Api->msgId == PHY_UL_CONFIG_REQUEST) {
+    if (pL1Api->msgId == PHY_UL_CONFIG_REQUEST) {
         memcpy(m_ulCfgMsg.data, buffer, length);
         m_ulCfgMsg.length = length;
         LOG_DEBUG(UE_LOGGER_NAME, "save PHY_UL_CONFIG_REQUEST, in %d.%d\n", m_sfn, m_sf);
     } else {
+        if (pL1Api->msgId == PHY_DELETE_UE_REQUEST) {
+            UInt16* pSfnSf = (UInt16*)&pL1Api->msgBody[0];
+            UInt8 sf = (m_sf + 2) % 10;
+            UInt16 sfn = (m_sfn + (m_sf + 2)/10) % 1024;
+            *pSfnSf = GENERATE_SUBFRAME_SFNSF(sfn, sf);
+            LOG_DEBUG(UE_LOGGER_NAME, "recv PHY_DELETE_UE_REQUEST in %d.%d, will handle it in %d.%d\n", m_sfn, m_sf, sfn, sf);
+        }
+
         Node* node = m_nodePool->getNode();
         if (node == 0) {
             LOG_ERROR(UE_LOGGER_NAME, "Fail to get free node\n");
@@ -112,13 +117,35 @@ void UeScheduler::handleDeleteUeReq(UInt16 rnti) {
 void UeScheduler::schedule() {
     m_pduIndexUeIdMap.clear();
 
-    processData();
-
     //int numUeSchedule = MAC_UE_SUPPORTED;
     int numUeSchedule = 1;
     for(int i=0; i<numUeSchedule; i++) {
         m_ueList[i]->schedule(m_sfn, m_sf, this);
     }
+
+    processData();
+}
+
+// ----------------------------------------
+BOOL UeScheduler::validateSfnSf(BOOL isULCfg, UInt16 sfn, UInt8 sf) {
+    UInt8 delay = DL_PHY_DELAY;
+    if (isULCfg) {
+        delay = UL_PHY_DELAY;
+    }
+    UInt32 curTick = m_sfn * 10 + m_sf;
+    UInt16 provTick = sfn * 10 + sf;
+    UInt8 delta;
+    if (provTick < curTick) {
+        delta = provTick + 10240 - curTick;
+    } else {
+        delta = provTick - curTick;
+    }
+
+    if (delta > delay) {
+        return FALSE;
+    } else {
+        return TRUE;
+    }        
 }
 
 // ----------------------------------------
@@ -131,7 +158,8 @@ void UeScheduler::processData() {
         UInt16 sfn  = (pUlConfigReq->sfnsf & 0xfff0) >> 4;
         LOG_DEBUG(UE_LOGGER_NAME, "handle msgId = 0x%02x in %d.%d, the provision sfnsf is %d.%d\n", 
             pL1Api->msgId, m_sfn, m_sf, sfn, sf);
-        if (sf == m_sf && sfn == m_sfn) {
+ 
+        if (!validateSfnSf(TRUE, sfn, sf) || (sf == m_sf && sfn == m_sfn)) {
             if(pUlConfigReq->ulConfigLen == (pL1Api->msgLen + pL1Api->lenVendorSpecific)) {
                 handleUlConfigReq(pUlConfigReq);
             }
@@ -157,8 +185,16 @@ void UeScheduler::processData() {
         LOG_DEBUG(UE_LOGGER_NAME, "handle msgId = 0x%02x in %d.%d, the provision sfnsf is %d.%d\n", 
             msgId, m_sfn, m_sf, sfn, sf);
 
-        if (sf == m_sf && sfn == m_sfn) {
+        if (!validateSfnSf(TRUE, sfn, sf) || (sf == m_sf && sfn == m_sfn)) {
             switch(msgId) {
+                case PHY_DELETE_UE_REQUEST:
+                {
+                    UInt16* pMsg = (UInt16*)&pL1Api->msgBody[0];
+                    UInt16* pRnti = ++pMsg;
+                    handleDeleteUeReq(*pRnti);
+                    break;
+                }
+                
                 case PHY_DL_CONFIG_REQUEST:
                 {
                     FAPI_dlConfigRequest_st *pDlConfigReq = (FAPI_dlConfigRequest_st *)&pL1Api->msgBody[0];

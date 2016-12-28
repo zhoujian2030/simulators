@@ -113,7 +113,15 @@ void RlcLayer::reassembleAMDPdu(AmdHeader* header, UInt8* buffer, UInt32 length)
     
     if (header->fi == FI_00_SINGLE_SEG) {
         LOG_DEBUG(UE_LOGGER_NAME,"receive a single SDU with only one segment\n");
-        handleExtentionField(header->e, buffer, length);
+        if (header->e) {
+            UInt32 sduLength = 0;
+            handleExtField(sduLength, buffer, length);
+            if (sduLength > 0) {
+                m_pdcpLayer->handleRxSrb(m_rlcSdu, sduLength);
+            }
+        } else {
+            m_pdcpLayer->handleRxSrb(buffer, length);
+        }
     } else if (header->fi == FI_01_FIRST_SEG) {
         LOG_DEBUG(UE_LOGGER_NAME,"receive the first segment\n");
         if (length > MAX_RLC_AMD_SDU_SEG_LENGTH) {            
@@ -127,6 +135,7 @@ void RlcLayer::reassembleAMDPdu(AmdHeader* header, UInt8* buffer, UInt32 length)
         }
         m_firstSeg->length = length;
         m_firstSeg->sn = header->sn;
+        m_firstSeg->e  = header->e;
         memcpy(m_firstSeg->buffer, buffer, length);
         m_firstSeg->next = m_firstSeg;
         m_firstSeg->prev = m_firstSeg;
@@ -146,39 +155,45 @@ void RlcLayer::reassembleAMDPdu(AmdHeader* header, UInt8* buffer, UInt32 length)
             return;
         }
 
-        if (prevSeg == m_firstSeg) {
-            // all previous data is saved in one node
-            if ((length + prevSeg->length) <= MAX_RLC_AMD_SDU_SEG_LENGTH) {
-                memcpy(prevSeg->buffer + prevSeg->length, buffer, length);
-                prevSeg->length += length;
-                handleExtentionField(header->e, prevSeg->buffer, prevSeg->length);
-            } else {
-                memcpy(m_rlcSdu, prevSeg->buffer, prevSeg->length);
-                memcpy(m_rlcSdu + prevSeg->length, buffer, length);
-                handleExtentionField(header->e, m_rlcSdu, prevSeg->length + length);
-            }
-            m_nodePool->freeNode(m_firstSeg);
-            m_firstSeg = 0;
-        } else {
-            // more than one node
-            UInt32 sduLength = 0;
-            while (1) {
-                memcpy(m_rlcSdu + length, m_firstSeg->buffer, m_firstSeg->length);
-                sduLength += m_firstSeg->length;
-                if (m_firstSeg->next = m_firstSeg) {
-                    LOG_DEBUG(UE_LOGGER_NAME,"last segment!\n");
-                    handleExtentionField(header->e, m_rlcSdu, sduLength);
-                    m_nodePool->freeNode(m_firstSeg);
-                    m_firstSeg = 0;
-                    break;
-                }
+        Node* node = m_nodePool->getNode();
+        if (node == 0) {
+            LOG_ERROR(UE_LOGGER_NAME, "No available node\n");
+            return;
+        }
+        node->length = length;
+        node->sn = header->sn;
+        node->e = header->e;
+        memcpy(node->buffer, buffer, length);
+        prevSeg->next = node;
+        node->prev = prevSeg;
+        node->next = m_firstSeg;
+        m_firstSeg->prev = node;
 
-                Node* node = m_firstSeg;
-                m_firstSeg = node->next;
-                m_firstSeg->prev = node->prev;
-                node->prev->next = m_firstSeg;
-                m_nodePool->freeNode(node);
+        // parse all segments
+        UInt32 sduLength = 0;
+        while (1) {
+            if (m_firstSeg->e) {
+                handleExtField(sduLength, buffer, length);
+            } else {
+                memcpy(m_rlcSdu + sduLength, m_firstSeg->buffer, m_firstSeg->length);
+                sduLength += m_firstSeg->length;
+            }            
+            
+            if (m_firstSeg->next == m_firstSeg) {
+                LOG_DEBUG(UE_LOGGER_NAME,"last segment!\n");
+                if (sduLength > 0) {
+                    m_pdcpLayer->handleRxSrb(m_rlcSdu, sduLength);
+                }
+                m_nodePool->freeNode(m_firstSeg);
+                m_firstSeg = 0;
+                break;
             }
+
+            Node* node = m_firstSeg;
+            m_firstSeg = node->next;
+            m_firstSeg->prev = node->prev;
+            node->prev->next = m_firstSeg;
+            m_nodePool->freeNode(node);
         }
     } else {
         LOG_DEBUG(UE_LOGGER_NAME,"receive the middle segment, TODO\n");
@@ -199,55 +214,67 @@ void RlcLayer::reassembleAMDPdu(AmdHeader* header, UInt8* buffer, UInt32 length)
 }
 
 // -------------------------------------
-void RlcLayer::handleExtentionField(UInt8 ext, UInt8* buffer, UInt32 length) {
-    LOG_DEBUG(UE_LOGGER_NAME, "ext = %d, length = %d\n", ext, length);
+void RlcLayer::handleExtField(UInt32& sduLength, UInt8* buffer, UInt32 length) {    
+    LOG_DEBUG(UE_LOGGER_NAME, "sduLength = %d, length = %d\n", sduLength, length);
+    UInt8 idx = 0;
+    UInt8 e = 0;
+    UInt16 li = 0;
+    vector<UInt16> liVect;
 
-    if (!ext) {
-        m_pdcpLayer->handleRxSrb(buffer, length);
-    } else {
-        UInt8 idx = 0;
-        UInt8 e = 0;
-        UInt16 li = 0;
-        vector<UInt16> liVect;
-
-        while (1) {
-            li = ((buffer[idx] & 0x7f) << 4) | ((buffer[idx + 1] >> 4) & 0x0f);
+    while (1) {
+        li = ((buffer[idx] & 0x7f) << 4) | ((buffer[idx + 1] >> 4) & 0x0f);
+        liVect.push_back(li);
+        e = (buffer[idx] >> 7) & 0x01;
+        idx++;
+        if (e == 1) {
+            li = ((buffer[idx] & 0x07) << 8) | (buffer[idx + 1]);
             liVect.push_back(li);
-            e = (buffer[idx] >> 7) & 0x01;
+            e = (buffer[idx] >> 3) & 0x01;
+            idx += 2;
+            if (e == 0) {
+                LOG_DEBUG(UE_LOGGER_NAME,"parse end 2\n");
+                break;
+            }
+        } else {
             idx++;
-            if (e == 1) {
-                li = ((buffer[idx] & 0x07) << 8) | (buffer[idx + 1]);
-                liVect.push_back(li);
-                e = (buffer[idx] >> 3) & 0x01;
-                idx += 2;
-                if (e == 0) {
-                    LOG_DEBUG(UE_LOGGER_NAME,"parse end 2\n");
-                    break;
-                }
-            } else {
-                idx++;
-                LOG_DEBUG(UE_LOGGER_NAME,"parse end 1\n");
-                break;
-            }
+            LOG_DEBUG(UE_LOGGER_NAME,"parse end 1\n");
+            break;
         }
-
-        UInt32 size = liVect.size();
-        for (UInt32 i=0; i<size; i++) {
-            li = liVect[i];            
-            LOG_DEBUG(UE_LOGGER_NAME, "li = %d\n", li);
-            if (li + idx <= length) {
-                m_pdcpLayer->handleRxSrb(&buffer[idx], li);
-                idx += li;
-            } else {
-                break;
-            }
-        }
-
-        if (idx < (length - 1)) {
-            li = length - idx;
-            m_pdcpLayer->handleRxSrb(&buffer[idx], li);
-        }
-
-        liVect.clear();
     }
+
+    UInt32 size = liVect.size();
+
+    for (UInt32 i=0; i<size; i++) {
+        li = liVect[i];            
+        LOG_DEBUG(UE_LOGGER_NAME, "li = %d\n", li);
+        if (li + idx <= length) {
+            if (i == 0 && sduLength > 0) {
+                // pre RLC SDU segment is saved in m_rlcSdu
+                memcpy(m_rlcSdu + sduLength, &buffer[idx], li);
+                m_pdcpLayer->handleRxSrb(m_rlcSdu, li+sduLength);
+                sduLength = 0;
+            } else {
+                if ((idx + li) == length) {
+                    // the last li 
+                    sduLength = li;
+                    memcpy(m_rlcSdu, &buffer[idx], li);
+                    idx = length;
+                    break;
+                } else {
+                    m_pdcpLayer->handleRxSrb(&buffer[idx], li);
+                }
+            }
+            idx += li;
+        } else {
+            break;
+        }
+    }
+
+    if (idx < (length - 1)) {
+        li = length - idx;
+        sduLength = li;
+        memcpy(m_rlcSdu, &buffer[idx], li);
+    }
+
+    liVect.clear();    
 }

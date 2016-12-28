@@ -33,4 +33,7 @@ typedef unsigned char BOOL;
 #define TRUE 1
 #define FALSE 0
 
+#define DL_PHY_DELAY 2
+#define UL_PHY_DELAY 1
+
 #endif

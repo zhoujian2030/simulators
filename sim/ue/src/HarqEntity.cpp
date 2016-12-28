@@ -110,7 +110,7 @@ BOOL HarqEntity::allocateUlHarqProcess(
             pUeTerminal->m_ueId, pUeTerminal->m_raRnti, pUeTerminal->m_rnti, harqId);
         pUeTerminal->allocateUlHarqCallback(harqId, TRUE);
         //
-        pUlHarqProcess->prepareSending(ulSfn, ulSf, pUeTerminal->m_state);
+        pUlHarqProcess->prepareSending(pDci0Pdu, ulSfn, ulSf, pUeTerminal->m_state);
         return TRUE;
     }
 
@@ -127,6 +127,19 @@ void HarqEntity::send(UeTerminal* pUeTerminal) {
         LOG_DEBUG(UE_LOGGER_NAME, "execute harq process %d, harqId = 0x%04x\n", it->second, it->first);
         m_ulHarqProcessList[it->second]->send(it->first, pUeTerminal);
     }
+}
+
+// ------------------------------------------------
+UInt8 HarqEntity::getNumPreparedUlHarqProcess() {
+    UInt8 num = 0;
+    map<UInt16, UInt16>::iterator it;
+    for (it = m_harqIdUlIndexMap.begin(); it != m_harqIdUlIndexMap.end(); ++it) {
+        if (m_ulHarqProcessList[it->second]->isPrepareSending()) {
+            num++;
+        }
+    }
+
+    return num;
 }
 
 // ------------------------------------------------
@@ -279,7 +292,8 @@ void HarqEntity::sendAck(UInt16 sfn, UInt8 sf, UeTerminal* pUeTerminal) {
 
 // ------------------------------------------------
 HarqEntity::UlHarqProcess::UlHarqProcess(UInt16 index) 
-: m_index(index), m_state(IDLE), m_ueState(0), m_timerValue(-1)
+: m_index(index), m_state(IDLE), m_ueState(0), m_timerValue(-1),
+  m_numRb(0), m_mcs(0)
 {
     
 }
@@ -298,13 +312,15 @@ void HarqEntity::UlHarqProcess::free() {
 }
 
 // -------------------------------------------    
-void HarqEntity::UlHarqProcess::prepareSending(UInt16 sfn, UInt8 sf, UInt8 ueState) {
+void HarqEntity::UlHarqProcess::prepareSending(FAPI_dlDCIPduInfo_st* pDci0Pdu, UInt16 sfn, UInt8 sf, UInt8 ueState) {
     LOG_DEBUG(UE_LOGGER_NAME, "m_index = %d, sfn = %d, sf = %d, ueState = %d\n", 
             m_index, sfn, sf, ueState);
     m_state = PREPARE_SENDING;
     m_sendSfn = sfn;
     m_sendSf = sf;
     m_ueState = ueState;
+    m_numRb = pDci0Pdu->numOfRB;
+    m_mcs = pDci0Pdu->mcs;
 }
 
 // ------------------------------------------------
@@ -319,42 +335,9 @@ void HarqEntity::UlHarqProcess::send(UInt16 harqId, UeTerminal* pUeTerminal) {
     UInt8 curSf = pUeTerminal->m_sf;
 
     if (curSfn == m_sendSfn && curSf == m_sendSf) {
-        // TODO move to do the businesss logic in UeTerminal
-        if (UeTerminal::RRC_SETUP_COMPLETE_DCI0_RECVD == m_ueState) {
-            pUeTerminal->buildRRCSetupComplete();
-            pUeTerminal->buildCrcData(0);
-            StsCounter::getInstance()->countRRCSetupComplCrcSent();    
-            pUeTerminal->ulHarqSendCallback(harqId, TRUE);
-            m_state = TB_SENT;
-            m_ueState = pUeTerminal->m_state;
-            startTimer();        
-        } else if (UeTerminal::RRC_SETUP_COMPLETE_SR_DCI0_RECVD == m_ueState) {
-            pUeTerminal->buildBSR();
-            pUeTerminal->buildCrcData(0);
-            pUeTerminal->ulHarqSendCallback(harqId, TRUE);
-            m_state = TB_SENT;
-            m_ueState = pUeTerminal->m_state;
-            startTimer();        
-        } else {
-            // TODO
-            if (m_ueState >= UeTerminal::RRC_SETUP_COMPLETE_SENT && m_ueState <= UeTerminal::RRC_CONNECTED) {
-                pUeTerminal->buildBSR(TRUE);
-                pUeTerminal->buildCrcData(0);
-                pUeTerminal->ulHarqSendCallback(harqId, TRUE);
-                m_state = TB_SENT;
-                m_ueState = pUeTerminal->m_state;
-                startTimer();        
-            }
-
-            if (m_ueState >= UeTerminal::RRC_RELEASING) {
-                pUeTerminal->buildBSR(TRUE);
-                pUeTerminal->buildCrcData(0);
-                pUeTerminal->ulHarqSendCallback(harqId, TRUE);
-                m_state = TB_SENT;
-                m_ueState = pUeTerminal->m_state;
-                startTimer();        
-            }
-        }
+        pUeTerminal->ulHarqSendCallback(harqId, m_numRb, m_mcs, m_ueState);
+        m_state = TB_SENT;
+        startTimer(); 
     }
 }
 
