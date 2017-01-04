@@ -218,6 +218,7 @@ namespace ue {
         BOOL processContentionResolutionTimer();
 
         void buildMsg3Data();
+        void buildMsg3WithRnti();
         void buildCrcData(UInt8 crcFlag);
         void buildRRCSetupComplete();
         void buildBSRAndData(BOOL isLongBSR = FALSE);
@@ -270,6 +271,7 @@ namespace ue {
         UInt16 m_raRnti;
         UInt16 m_preamble;
         UInt16 m_ta;
+        UInt16 m_rachTa;
         
         UInt32 m_state;
         UInt32 m_subState;
@@ -316,7 +318,7 @@ namespace ue {
 
     // ------------------------------------------------------
     inline BOOL UeTerminal::validateRar(RandomAccessResp* rar) {
-        return (rar->rapid == m_preamble) && (rar->ta == m_ta);
+        return (rar->rapid == m_preamble) && (rar->ta == m_rachTa);
     }
 
     // ------------------------------------------------------

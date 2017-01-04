@@ -22,7 +22,7 @@ l2 -> phy : [**0.3**] FAPI_DLSCH_PDU , RA-RNTI
 l2 -> ue : [**0.5**] RAR, TC-RNTI
 
 note over ue, l2
-UE sends MSG in the 2nd UL SF after RAR received
+UE sends MSG3 in the 2nd UL SF after RAR received
 end note
 l2 -> phy : [**1.1**] FAPI_ULSCH (1 TTI advance)
 ue -> l2 : [**1.2**] MSG3 (RRC Connection Request), TC-RNTI

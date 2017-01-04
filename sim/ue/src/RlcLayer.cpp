@@ -173,7 +173,7 @@ void RlcLayer::reassembleAMDPdu(AmdHeader* header, UInt8* buffer, UInt32 length)
         UInt32 sduLength = 0;
         while (1) {
             if (m_firstSeg->e) {
-                handleExtField(sduLength, buffer, length);
+                handleExtField(sduLength, m_firstSeg->buffer, m_firstSeg->length);
             } else {
                 memcpy(m_rlcSdu + sduLength, m_firstSeg->buffer, m_firstSeg->length);
                 sduLength += m_firstSeg->length;

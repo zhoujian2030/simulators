@@ -22,7 +22,7 @@ using namespace std;
 const UInt8 UeTerminal::m_ulSubframeList[10] = {0, 0, 1, 0, 0, 0, 0, 1, 0, 0};
 // --------------------------------------------
 UeTerminal::UeTerminal(UInt8 ueId, UInt16 raRnti, UeMacAPI* ueMacAPI) 
-: m_ueMacAPI(ueMacAPI), m_ueId(ueId), m_raRnti(raRnti), m_preamble(raRnti), m_ta(31), m_state(IDLE),
+: m_ueMacAPI(ueMacAPI), m_ueId(ueId), m_raRnti(raRnti), m_preamble(raRnti), m_ta(31),m_rachTa(0), m_state(IDLE),
   m_subState(IDLE), m_rachSf(SUBFRAME_SENT_RACH), m_rachSfn(0)
 {
     m_harqEntity = new HarqEntity(NUM_UL_HARQ_PROCESS, NUM_DL_HARQ_PROCESS);
@@ -94,7 +94,8 @@ void UeTerminal::schedule(UInt16 sfn, UInt8 sf, UeScheduler* pUeScheduler) {
 
 // --------------------------------------------
 void UeTerminal::handleDeleteUeReq() {
-    LOG_DEBUG(UE_LOGGER_NAME, "[UE: %d], [RA-RNTI: %d], [RNTI: %d], %d.%d\n", m_ueId, m_raRnti, m_rnti, m_sfn, m_sf);
+    LOG_DEBUG(UE_LOGGER_NAME, "[UE: %d], [RA-RNTI: %d], [RNTI: %d], %d.%d, m_state = %d\n", 
+        m_ueId, m_raRnti, m_rnti, m_sfn, m_sf, m_state);
 
     if (m_state == RRC_RELEASING) {
         StsCounter::getInstance()->countTestSuccess();
@@ -129,7 +130,7 @@ void UeTerminal::scheduleRach(UeScheduler* pUeScheduler) {
         FAPI_rachPduIndication_st* pRachPduInd = (FAPI_rachPduIndication_st*)&pRachInd->rachPduInfo[pRachInd->numOfPreamble-1];
         pRachPduInd->rnti = m_raRnti;
         pRachPduInd->preamble = m_preamble;
-        pRachPduInd->timingAdvance = m_ta;  
+        pRachPduInd->timingAdvance = m_rachTa;  //TODO
         
         msgLen += sizeof(FAPI_rachPduIndication_st);
         pL1Api->msgLen += msgLen;
@@ -171,6 +172,7 @@ void UeTerminal::scheduleMsg3(UeScheduler* pUeScheduler) {
         // to send MSG3 in the UL subframe
         if (m_sfn == m_msg3Sfn && m_sf == m_msg3Sf) {
             buildMsg3Data();
+            // buildMsg3WithRnti();
             buildCrcData(0);
             StsCounter::getInstance()->countMsg3CrcSent();
             m_state = MSG3_SENT;
@@ -398,6 +400,53 @@ void UeTerminal::buildCrcData(UInt8 crcFlag) {
 
     LOG_DEBUG(UE_LOGGER_NAME, "[UE: %d], [RA-RNTI: %d], [RNTI: %d], compose crc indication, msgLen = %d\n", 
         m_ueId, m_raRnti, m_rnti, pL1Api->msgLen);
+}
+
+// --------------------------------------------
+void UeTerminal::buildMsg3WithRnti() {
+    UInt32 msgLen = 0;
+    FAPI_l1ApiMsg_st* pL1Api = (FAPI_l1ApiMsg_st *)m_ueMacAPI->getSchBuffer();
+    pL1Api->lenVendorSpecific = 0;
+    pL1Api->msgId = PHY_UL_RX_ULSCH_INDICATION;
+
+    FAPI_rxULSCHIndication_st *pULSchInd = (FAPI_rxULSCHIndication_st*)&pL1Api->msgBody[0];
+    pULSchInd->sfnsf = ( (m_sfn) << 4) | ( (m_sf) & 0xf);
+    pULSchInd->numOfPdu += 1;
+
+    FAPI_ulDataPduIndication_st *pUlDataPduInd;
+    
+    if (pULSchInd->numOfPdu == 1) {
+        UInt32 schHeaderLen = offsetof(FAPI_rxULSCHIndication_st, ulDataPduInfo);
+        m_ueMacAPI->addSchDataLength(FAPI_HEADER_LENGTH + schHeaderLen);
+        pL1Api->msgLen += schHeaderLen;
+        pUlDataPduInd = (FAPI_ulDataPduIndication_st *)&pULSchInd->ulDataPduInfo[0];
+    } else {
+        pUlDataPduInd = (FAPI_ulDataPduIndication_st *)&pULSchInd->ulDataPduInfo[pULSchInd->numOfPdu - 1];
+    }
+
+    pUlDataPduInd->rnti = m_rnti; 
+    pUlDataPduInd->length = MSG3_LENGTH;
+    pUlDataPduInd->ulCqi = 160;   
+    pUlDataPduInd->timingAdvance = m_ta;
+    pUlDataPduInd->dataOffset = 1;  // TBD
+
+    msgLen += sizeof(FAPI_ulDataPduIndication_st);
+
+    UInt8 msg3Buffer[MSG3_LENGTH] = {
+        0x3B, 0x3D, 0x01, 0x00, 0x4B, 0x0E, 0x88, 0x02, 0x02, 0x48, 
+        0x09, 0x40, 0xE9, 0x0E, 0x41, 0x7E, 0xCC, 0x9E, 0x00, 0x14,
+        0xA0, 0xFA};
+
+    msgLen += pUlDataPduInd->length;
+    pL1Api->msgLen += msgLen;
+    m_ueMacAPI->addSchDataLength(msgLen);
+
+    m_ueMacAPI->addSchPduData(msg3Buffer, pUlDataPduInd->length);
+
+    StsCounter::getInstance()->countMsg3Sent();
+
+    LOG_DEBUG(UE_LOGGER_NAME, "[UE: %d], [RA-RNTI: %d], [RNTI: %d], compose MSG3 with C-RNTI, msgLen = %d\n", 
+        m_ueId, m_raRnti, m_rnti, pL1Api->msgLen);    
 }
 
 // --------------------------------------------

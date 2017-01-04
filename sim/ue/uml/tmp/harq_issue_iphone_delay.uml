@@ -1,0 +1,40 @@
+@startuml
+autonumber
+title iphone (delay for identity request)
+
+participant "L2" as l2
+participant "PHY " as phy
+participant "UE " as ue
+
+ue -> l2 : [468.7] RRC SETUP Complete (RLC HEAD: a0 00, sn = 0, p = 1, request RLC status report)
+l2 -> ue : [469.3] RLC ACK (00 04, ack_sn = 1)
+ue -> l2 : [469.7] HARQ Value 4
+note over l2, ue 
+MAC parses HARQ value 4 as NACK and retransmits RLC ACK,
+but actually UE should have received the RLC ACK and not 
+retransmit RRC SETUP complete
+end note
+
+... retransmit RLC ACK ...
+
+... send DCI0 to allocate UL resource in every SF 2 and 7 ...
+
+note over l2, ue 
+MAC schedules identity request after some delay (100 ~ 300ms)
+end note
+
+l2 -> ue : [503.1] Identity Request (RLC segment 1, RLC HEAD: 88 00, sn = 0, p = 0, not request RLC status report)
+l2 -> ue : [503.3] Identity Request (RLC segment 2, RLC HEAD: b0 01, sn = 1, p = 1, request RLC status report)
+ue -> l2 : [503.7] HARQ value 1 (for RLC segment 1 & 2)
+
+note over l2, ue 
+UE sends SR to request UL resource to send identity response 
+end note
+
+ue -> l2 : [503.7] SR
+l2 -> ue : [504.3] DCI0 (8 RB)
+l2 -> phy : [504.7]  UL SCH cfg 
+ue -> l2 : [504.7] RLC ACK for Identity Request RLC segment 2 (00 08, ack_sn = 2)
+ue -> l2 : [504.7] Identity Response
+
+@enduml

@@ -1,0 +1,35 @@
+@startuml
+autonumber
+
+participant "MAC" as mac
+participant "PHY" as phy
+participant "UE " as ue
+
+mac -> ue :  [497.6] RAR (resBlkStart = 16, numOfResBlk = 2, modType = 2)
+mac -> phy : [498.2] UL SCH cfg (resBlkStart = 16, numOfResBlk = 2, modType = 2)
+ue -> mac : [498.2] MSG3
+
+...
+
+mac -> ue : [508.3] DCI0 (resBlkStart = 0, numOfResBlk = 8, modType = 4)
+mac -> phy : [508.7] UL SCH cfg (resBlkStart = 0, numOfResBlk = 8, modType = 4)
+ue -> mac : [508.7] RRC SETUP Complete
+
+...
+
+mac -> ue : [509.3] DCI0 (resBlkStart = 10, numOfResBlk = 12, modType = 2)
+mac -> phy : [509.7] UL SCH cfg (resBlkStart = 10, numOfResBlk = 12, modType = 2)
+ue -> mac : [509.7] Zero Long BSR
+
+...
+
+mac -> ue : [509.8] DCI0 (resBlkStart = 0, numOfResBlk = 12, modType = 2)
+mac -> phy : [510.2] UL SCH cfg (resBlkStart = 0, numOfResBlk = 12, modType = 2)
+ue -> mac : [509.7] Zero Long BSR
+
+note over mac,ue
+keep scheduling UL resource in each UL SF even UE not sends SR or BSR to request UL resource
+end note
+
+
+@enduml

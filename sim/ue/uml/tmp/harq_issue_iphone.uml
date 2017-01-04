@@ -1,0 +1,45 @@
+@startuml
+autonumber
+title iphone (no delay for identity request)
+
+participant "L2" as l2
+participant "PHY " as phy
+participant "UE " as ue
+
+ue -> l2 : [628.7] RRC SETUP Complete (RLC HEAD: a0 00, sn = 0, p = 1, request RLC status report)
+l2 -> ue : [629.3] RLC ACK (00 04, ack_sn = 1)
+ue -> l2 : [629.7] HARQ Value 4
+note over l2, ue 
+MAC parses HARQ value 4 as NACK and retransmits RLC ACK,
+but actually UE should have received the RLC ACK and not 
+retransmit RRC SETUP complete
+end note
+
+... retransmit RLC ACK ...
+
+l2 -> ue : [629.8] Identity Request (RLC segment 1, RLC HEAD: 88 00, sn = 0, p = 0, not request RLC status report)
+l2 -> ue : [629.9] Identity Request (RLC segment 2, RLC HEAD: b0 01, sn = 1, p = 1, request RLC status report)
+ue -> l2 : [630.2] HARQ value 4 (for RLC segment 1 sent in 629.8)
+ue -> l2 : [630.7] HARQ value 4 (for RLC segment 2 sent in 629.9)
+ue -> l2 : [630.7] RLC ACK (00 08, ack_sn = 2)
+note over l2, ue 
+MAC parses HARQ value 4 as NACK and retransmits identity request
+segment 1 and segment 2, but actually UE should have received
+both segments and responsed RLC ACK 
+end note
+
+... retransmit Identity Request ...
+
+note over l2, ue 
+MAC schedules UL resource in every UL subframe for the UE,
+but UE still sends SR to request UL resource instead of 
+sending UL data directly with allocated resource by DCI0 before
+end note
+
+... send DCI0 to allocate UL resource in SF 2 and 7 ...
+ue -> l2 : [707.7] SR (700 ms after receiving identity request)
+l2 -> ue : [708.3] DCI0 (8 RB)
+l2 -> phy : [708.7]  UL SCH cfg 
+ue -> l2 : [708.7] Unknown UL SCH data (CRC error)
+
+@enduml

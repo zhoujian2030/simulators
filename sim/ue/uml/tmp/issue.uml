@@ -1,0 +1,33 @@
+@startuml
+autonumber
+
+
+ue -> mac : rach
+mac -> ue : RAR (QPSK, aggregation level = 4)
+
+ue -> mac : MSG3
+mac -> ue : Contention Resolution (QPSK, aggregation level = 4)
+ue -> mac : HARQ ACK
+
+mac -> ue : RRC Connection Setup (QPSK, aggregation level = 4)
+ue -> mac : HARQ ACK 
+
+ue -> mac : SR 
+mac -> ue : DCI 0 (1 RB)
+ue -> mac : BSR + RRC Setup Complete (RLC Segment 1)
+
+mac -> ue : Timing Advance Command
+mac -> ue : DCI 0 (10 RB)
+
+ue -> mac : HARQ ACK for Timing Advance Command
+ue -> mac : RRC Setup Complete (RLC Segment 2)
+
+mac -> ue : RLC status report (RLC ACK for RRC Setup complete)
+ue -> mac : HARQ ACK 
+
+mac -> ue : Timing Advance Command
+ue -> mac : HARQ NACK
+
+
+
+@enduml
