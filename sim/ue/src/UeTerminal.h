@@ -121,8 +121,6 @@ namespace ue {
             subframeDelayAfterRachSent = 3,
             raResponseWindowSize = 7,   // from SIB2
             macContentionResolutionTimer = 48, // from SIB2
-            srPeriodicity = 40,  // from RRC setup
-            srConfigIndex = 72,
             identityRequestTimer = 1000,  // self-defined
             tddAckNackFeedbackMode = 0,  // bundling mode, from RRC setup
             bsrTimer = 40   // self-defined TODO
@@ -303,6 +301,8 @@ namespace ue {
 
         // subframe in which to send SR 
         BOOL m_needSendSR;
+        UInt8 m_srConfigIndex;
+        SInt8 m_srPeriodicity;
         UInt16 m_srSfn;
         UInt8 m_srSf;
     };
@@ -385,7 +385,7 @@ namespace ue {
 
     // -------------------------------------------------------
     inline void UeTerminal::startSRTimer() {
-        m_srTValue = srPeriodicity;
+        m_srTValue = m_srPeriodicity;
     }
 
     // -------------------------------------------------------
@@ -396,7 +396,7 @@ namespace ue {
     
     // -------------------------------------------------------
     inline BOOL UeTerminal::isSRSent() {
-        return ((m_srTValue > 0) && (m_srTValue <= srPeriodicity));
+        return ((m_srTValue > 0) && (m_srTValue <= m_srPeriodicity));
     }
 
     // -------------------------------------------------------

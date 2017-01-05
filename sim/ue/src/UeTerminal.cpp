@@ -23,13 +23,14 @@ const UInt8 UeTerminal::m_ulSubframeList[10] = {0, 0, 1, 0, 0, 0, 0, 1, 0, 0};
 // --------------------------------------------
 UeTerminal::UeTerminal(UInt8 ueId, UInt16 raRnti, UeMacAPI* ueMacAPI) 
 : m_ueMacAPI(ueMacAPI), m_ueId(ueId), m_raRnti(raRnti), m_preamble(raRnti), m_ta(31),m_rachTa(0), m_state(IDLE),
-  m_subState(IDLE), m_rachSf(SUBFRAME_SENT_RACH), m_rachSfn(0)
+  m_subState(IDLE), m_rachSf(SUBFRAME_SENT_RACH), m_rachSfn(0), m_srConfigIndex(17)
 {
     m_harqEntity = new HarqEntity(NUM_UL_HARQ_PROCESS, NUM_DL_HARQ_PROCESS);
 
     m_t300Value = -1;
     m_contResolutionTValue = -1;
     m_srTValue = -1;
+    m_srPeriodicity = 0;
     m_bsrTValue = -1;
     m_needSendSR = FALSE;
     m_dlSchMsg = new DlSchMsg();
@@ -1503,22 +1504,21 @@ BOOL UeTerminal::parseRRCSetupPdu(UInt8* data, UInt32 pduLen) {
 void UeTerminal::setSfnSfForSR() {
     // only valid for TDD DL/UL config 2
 
-    // if srConfigIndex = 17, ul sf = 2, ul sfn = 0, 2, 4, 6, ...
-    // if srConfigIndex = 72, ul sf = 7, ul sfn = 3, 7, 11, 15, ...
+    // if m_srConfigIndex = 17, ul sf = 2, ul sfn = 0, 2, 4, 6, ...
+    // if m_srConfigIndex = 72, ul sf = 7, ul sfn = 3, 7, 11, 15, ...
 
     // refer to 36.213 Table 10.1.5-1
-    LOG_WARN(UE_LOGGER_NAME, "[UE: %d], [RA-RNTI: %d], [RNTI: %d], srConfigIndex = %d\n", 
-        m_ueId, m_raRnti, m_rnti, srConfigIndex);
+    LOG_WARN(UE_LOGGER_NAME, "[UE: %d], [RA-RNTI: %d], [RNTI: %d], m_srConfigIndex = %d\n", 
+        m_ueId, m_raRnti, m_rnti, m_srConfigIndex);
 
-    SInt8 periodicity = 0;
     SInt8 nOffset = 0;
-    if ((srConfigIndex >= 15) && (srConfigIndex <= 34)) {
-        periodicity = 20;
-        nOffset = srConfigIndex - 15;
+    if ((m_srConfigIndex >= 15) && (m_srConfigIndex <= 34)) {
+        m_srPeriodicity = 20;
+        nOffset = m_srConfigIndex - 15;
         m_srSf = 2;
-    } else if ((srConfigIndex >= 35) && (srConfigIndex <= 74)) {
-        periodicity = 40;
-        nOffset = srConfigIndex - 35;
+    } else if ((m_srConfigIndex >= 35) && (m_srConfigIndex <= 74)) {
+        m_srPeriodicity = 40;
+        nOffset = m_srConfigIndex - 35;
         m_srSf = 7;
     } else {
         LOG_WARN(UE_LOGGER_NAME, "[UE: %d], [RA-RNTI: %d], [RNTI: %d], unimpletemented, TODO\n", 
@@ -1532,12 +1532,12 @@ void UeTerminal::setSfnSfForSR() {
     }
 
     SInt8 calcNs = m_srSf * 2 / 2;
-    SInt8 tmp = (m_srSfn * 10 + calcNs - nOffset) % periodicity;
+    SInt8 tmp = (m_srSfn * 10 + calcNs - nOffset) % m_srPeriodicity;
     if (tmp != 0) {
         if (tmp < 0) {
             tmp = 0 - tmp;
         }
-        m_srSfn = (m_srSfn + (periodicity - tmp) / 10) % 1024;
+        m_srSfn = (m_srSfn + (m_srPeriodicity - tmp) / 10) % 1024;
     }
     
     LOG_WARN(UE_LOGGER_NAME, "[UE: %d], [RA-RNTI: %d], [RNTI: %d], m_srSfnSf = %d.%d, m_sfnSf = %d.%d\n", 

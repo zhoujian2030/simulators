@@ -1,6 +1,6 @@
 @startuml
 autonumber
-title TC0 basic flow
+title TC0 basic flow, ta = 31, force ul grant disabled
 
 participant "Mock UE" as ue
 participant "Mock PHY" as phy
@@ -44,6 +44,8 @@ receiving RRC setup from RRC
 end note
 
 l2 -> l3 : RRC Connection Request 
+... 
+
 l3 -> l2 : Create UE context (PDCP/RLC/MAC/PHY)
 l2 -> phy : Config UE
 l2 -> l3 : Response
@@ -52,79 +54,83 @@ l3 -> l2 : RRC Connection Setup
 l2 -> phy : [**2.6**] FAPI_DL_DCI_FORMAT_1A, C-RNTI = TC-RNTI
 l2 -> phy : [**2.6**] FAPI_DLSCH_PDU, C-RNTI
 l2 -> ue : [**2.8**] RRC Connection Setup, C-RNTI
-l2 --> phy : [**3.1**] UCI_HARQ (Cfg PHY to recv HARQ)
+l2 --> phy : [**3.1**] UCI_HARQ
 ue -> l2 : [**3.2**] HARQ ACK (for RRC Connection Setup)
 
 note over ue, l2
-UE sends SR in the next UL SF after HARQ ACK for RRC Setup sent
-Network send DCI0 to UE to allocate 1 RB for BSR, UE sends BSR 
-4 SF's after DCI0 received
+UE sends SR to request UL resurce for RRC Setup complete.
+which UL SFN and SF depends on srConfigIndex. 
+If srConfigIndex = 17, the SR periodicity is 20ms, send SR in UL SF 2
+If srConfigIndex = 72, the SR periodicity is 40ms, send SR in UL SF 7
 end note
 
-l2 --> phy : [**3.6**] UCI_SR (Cfg PHY to recv SR)
-ue -> l2 : [**3.7**] SR
-l2 -> ue : [**4.3**] FAPI_UL_DCI_FORMAT_0 (1 RB)
-l2 -> phy : [**4.6**] FAPI_ULSCH
-ue -> l2 : [**4.7**] BSR
-phy -> l2 : [**4.7**] BSR CRC (0: Correct)
+l2 --> phy : [**4.1**] UCI_SR (Cfg PHY to recv SR)
+ue -> l2 : [**4.2**] SR
+l2 -> ue : [**4.6**] FAPI_UL_DCI_FORMAT_0 (1 RB)
+l2 -> phy : [**5.1**] FAPI_ULSCH
+ue -> l2 : [**5.2**] BSR
+phy -> l2 : [**5.2**] BSR CRC (0: Correct)
 
-l2 -> phy : [**4.8**] FAPI_DL_DCI_FORMAT_1
-l2 -> phy : [**4.8**] FAPI_DLSCH_PDU
-l2 -> ue : [**5.0**] MAC Timing Advance Command
+note over ue, l2 
+whether send TA command depends on TA value reported in ULSCH Ind.
+If ta = 31, no TA command sent.
+end note
+l2 --> phy : [**5.3**] FAPI_DL_DCI_FORMAT_1
+l2 --> phy : [**5.3**] FAPI_DLSCH_PDU
+l2 --> ue : [**5.5**] MAC Timing Advance Command
 
 note over ue, l2
 Network schedules UL resource for RRC Setup complete according
 to BSR value received, also HARQ ACK for BSR is sent together
 end note
 
-l2 -> ue : [**5.3**] FAPI_HI_PDU (HARQ ACK for BSR)
-l2 -> ue : [**5.3**] FAPI_UL_DCI_FORMAT_0 (8 RB)
-l2 -> phy : [**5.6**] FAPI_ULSCH_HARQ (For receiving RRC setup complete and HARQ ACK)
-ue -> l2 : [**5.7**] RRC Setup Complete
-phy -> l2 : [**5.7**] RRC Setup Complete CRC (0: Correct)
-ue -> l2 : [**5.7**] HARQ ACK (for TA Command)
+l2 -> ue : [**5.8**] FAPI_HI_PDU (HARQ ACK for BSR)
+l2 -> ue : [**5.8**] FAPI_UL_DCI_FORMAT_0 (8 RB)
+l2 -> phy : [**6.1**] FAPI_ULSCH (For receiving RRC setup complete. \n\tIf TA cmd sent, FAPI_ULSCH_HARQ for HARQ ACK also)
+ue -> l2 : [**6.2**] RRC Setup Complete
+phy -> l2 : [**6.2**] RRC Setup Complete CRC (0: Correct)
+ue --> l2 : [**6.2**] HARQ ACK (for TA Command if sent earlier)
 
 l2 -> l3 : RRC Setup Complete
 
 note over ue, l2
-Network send force UL grant to allocate UL resource 
+Network send force UL grant to allocate UL resource for each
+UL SF even the UE has no data to sent if force UL Grant is enabled,
+UE will send zero long BSR in this case.
+Currently this feature is disabled.
 end note
 
-l2 --> ue : [**5.8**] FAPI_UL_DCI_FORMAT_0 (10 RB)
+l2 -> phy : [**6.4**] FAPI_DL_DCI_FORMAT_1A
+l2 -> phy : [**6.4**] FAPI_DLSCH_PDU
+l2 -> ue : [**6.6**] RLC ACK for RRC setup complete
+
+...
 
 note over ue, l2
-MAC schedules Identity Request when receives msg from RRC 
+MAC schedules Identity Request when receives msg from RRC.
+UE send SR to request ul resource for sending identity response
 end note
 
 l3 -> l2 : Identity Request
 
-l2 -> phy : [**5.9**] FAPI_DL_DCI_FORMAT_1A
-l2 -> phy : [**5.9**] FAPI_DLSCH_PDU
-l2 -> ue : [**6.1**] Identity Request (RLC seg 1)
-l2 -> phy : [**6.1**] FAPI_DL_DCI_FORMAT_1A
-l2 -> phy : [**6.1**] FAPI_DLSCH_PDU
-l2 --> phy : [**6.1**] FAPI_ULSCH (for UL DCCH data)
-ue --> l2 : [**6.2**] Zero Long BSR 
-phy --> l2 : [**6.2**] Zero Long BSR CRC (0: Correct)
-l2 -> ue : [**6.3**] Identity Request (RLC seg 2, need RLC ACK)
+l2 -> phy : [**6.6**] FAPI_DL_DCI_FORMAT_1A
+l2 -> phy : [**6.6**] FAPI_DLSCH_PDU
+l2 -> ue : [**6.8**] Identity Request
+l2 --> phy : [**7.1**] UCI_HARQ
+ue -> l2 : [**7.2**] HARQ ACK (for Identity Request)
 
-note over ue, l2
-Network continues to send force UL grant to allocate UL resource 
-end note
-l2 -> ue : [**6.3**] FAPI_HI_PDU (HARQ ACK for RRC setup complete)
-l2 --> ue : [**6.3**] FAPI_UL_DCI_FORMAT_0 (16 RB)
-l2 --> phy : [**6.6**] FAPI_ULSCH_HARQ (for UL DCCH data and HARQ ACK)
-ue -> l2 : [**6.7**] HARQ ACK (for Identity Request seg 1 & seg 2)
-ue -> l2 : [**6.7**] Identity Response + RLC ACK (for Identity Request seg 2)
-phy -> l2 : [**6.7**] Identity Response CRC (0: Correct)
+l2 -> ue : [**8.1**] FAPI_UCI_SR
+ue -> l2 : [**8.2**] SR
+l2 -> ue : [**8.8**] FAPI_UL_DCI_FORMAT_0 (1 RB)
+l2 -> phy : [**9.1**] FAPI_ULSCH
+ue -> l2 : [**9.2**] BSR
+phy -> l2 : [**9.2**] BSR CRC (0: Correct)
 
-l2 -> l3 : Identity Response
-
-note over ue, l2
-Network continues to send force UL grant to allocate UL resource 
-end note
-l2 -> ue : [**6.8**] FAPI_HI_PDU (HARQ ACK for Zero Long BSR sent in 6.2)
-l2 --> ue : [**6.8**] FAPI_UL_DCI_FORMAT_0 (60 RB)
+l2 -> ue : [**9.8**] FAPI_HI_PDU (HARQ ACK for BSR)
+l2 -> ue : [**9.8**] FAPI_UL_DCI_FORMAT_0 (12 RB)
+l2 -> phy : [**10.1**] FAPI_ULSCH (For receiving Identity Response)
+ue -> l2 : [**10.2**] Identity Response
+phy -> l2 : [**10.2**] Identity Response CRC (0: Correct)
 
 note over ue, l2
 Network sends Attach Reject & RRC Release after Identity Responose received
@@ -133,30 +139,29 @@ end note
 l3 -> l2 : Attach Reject 
 l3 -> l2 : RRC Release
 
-l2 -> phy : [**6.8**] FAPI_DL_DCI_FORMAT_1
-l2 -> phy : [**6.8**] FAPI_DLSCH_PDU (for TA command)
-l2 -> phy : [**6.9**] FAPI_DL_DCI_FORMAT_1A
-l2 -> phy : [**6.9**] FAPI_DLSCH_PDU (for attach reject & rrc release)
-l2 -> ue : [**7.0**] MAC Timing Advance Command
-l2 -> ue : [**7.1**] Attach Reject + RRC Release (need RLC ACK)
+l2 -> phy : [**10.4**] FAPI_DL_DCI_FORMAT_1A
+l2 -> phy : [**10.4**] FAPI_DLSCH_PDU (for RLC ACK & attach reject & rrc release)
+l2 -> ue : [**10.6**] RLC ACK for Identity Response + Attach Reject + RRC Release (RLC Seg 1)
 
-l2 -> phy : [**7.1**] FAPI_ULSCH (for UL DCCH data)
-ue -> l2 : [**7.2**] Zero Short BSR + RLC ACK (for Attach Reject & RRC Release)
-phy -> l2 : [**7.2**] Zero Short BSR CRC (0: Correct)
+l2 -> phy : [**10.6**] FAPI_DL_DCI_FORMAT_1A
+l2 -> phy : [**10.6**] FAPI_DLSCH_PDU (for RLC ACK & attach reject & rrc release)
+l2 -> ue : [**10.8**] RLC ACK for Identity Response + Attach Reject + RRC Release (RLC Seg 2)
 
-note over ue, l2
-Network continues to send force UL grant to allocate UL resource 
-end note
-l2 -> ue : [**7.3**] FAPI_HI_PDU (HARQ ACK for Identity Response sent in 6.7)
-l2 --> ue : [**7.3**] FAPI_UL_DCI_FORMAT_0 (60 RB)
+l2 -> ue : [**10.8**] FAPI_HI_PDU (HARQ ACK for Identity Response sent in 10.2)
+
+l2 --> phy : [**11.1**] UCI_HARQ
+ue -> l2 : [**11.2**] HARQ ACK
 
 note over ue, l2
-Network delete ue context
+Network delete ue context.
+TODO, UE will send SR in 12.2 to request UL resource 
+to send RLC ACK for RRC Release if RRC not delete context 
+so quick, need to check further.
 end note
 
 l3 -> l2 : Delete UE Context (PDCP/RLC/MAC/PHY)
 
-l2 -> ue : [**7.3**] Delete Phy UE Context 
+l2 -> ue : [**11.3**] Delete Phy UE Context 
 ue -> ue : free resource
 
 note over ue
@@ -166,6 +171,6 @@ next RACH indication in
 next subframe 1
 end note
 
-ue -> l2 : [8.1] RACH, RA-RNTI, preamble
+ue -> l2 : [12.1] RACH, RA-RNTI, preamble
 
 @enduml
