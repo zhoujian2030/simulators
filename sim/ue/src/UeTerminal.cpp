@@ -990,7 +990,7 @@ void UeTerminal::handleDci0Pdu(FAPI_dlHiDCIPduInfo_st* pHIDci0Header, FAPI_dlDCI
 }
 
 // --------------------------------------------
-void UeTerminal::handleHIPdu(FAPI_dlHiDCIPduInfo_st* pHIDci0Header, FAPI_dlHiPduInfo_st* pHiPdu) {
+BOOL UeTerminal::handleHIPdu(FAPI_dlHiDCIPduInfo_st* pHIDci0Header, FAPI_dlHiPduInfo_st* pHiPdu) {
     LOG_DEBUG(UE_LOGGER_NAME, "[UE: %d], [RA-RNTI: %d], [RNTI: %d], handle HI, m_state = %d\n", 
         m_ueId, m_raRnti, m_rnti, m_state); 
 
@@ -1002,15 +1002,15 @@ void UeTerminal::handleHIPdu(FAPI_dlHiDCIPduInfo_st* pHIDci0Header, FAPI_dlHiPdu
         StsCounter::getInstance()->countNonConsecutiveSfnSf();
         StsCounter::getInstance()->countTestFailure();
         m_state = WAIT_TERMINATING;
-        return;
+        return TRUE;
     }
 
     if (m_state == IDLE) {
         LOG_WARN(UE_LOGGER_NAME, "[UE: %d], [RA-RNTI: %d], UE in idle state, drop the data\n", m_ueId, m_raRnti);
-        return;
+        return TRUE;
     }   
 
-    m_harqEntity->handleAckNack(pHIDci0Header, pHiPdu, this);
+    return m_harqEntity->handleAckNack(pHIDci0Header, pHiPdu, this);
 }
 
 // --------------------------------------------

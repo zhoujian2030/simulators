@@ -10,6 +10,7 @@
 
 #include "FapiInterface.h"
 #include <map>
+#include <vector>
 
 #define MAC_UE_SUPPORTED 50
 #define DL_MSG_CONTAINER_SIZE 4 * 4
@@ -50,7 +51,8 @@ namespace ue {
         UeTerminal** m_ueList;
         std::map<UInt16, UInt8> m_rntiUeIdMap;
         std::map<UInt16, UInt8> m_pduIndexUeIdMap;
-        std::map<UInt16, UInt8> m_harqIdUeIdMap;
+        // std::map<UInt16, UInt8> m_harqIdUeIdMap;
+        std::vector<UInt32> m_ueIdHarqIdVect;
 
         struct FapiL1MsgHead {
             UInt16 sfnsf;

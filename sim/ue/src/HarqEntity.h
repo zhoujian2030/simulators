@@ -28,7 +28,7 @@ namespace ue {
         BOOL allocateUlHarqProcess(FAPI_dlHiDCIPduInfo_st* pHIDci0Header, FAPI_dlDCIPduInfo_st* pDci0Pdu, UeTerminal* pUeTerminal);
         void send(UeTerminal* pUeTerminal);     
         UInt8 getNumPreparedUlHarqProcess();
-        void handleAckNack(FAPI_dlHiDCIPduInfo_st* pHIDci0Header, FAPI_dlHiPduInfo_st* pHiPdu, UeTerminal* pUeTerminal);  
+        BOOL handleAckNack(FAPI_dlHiDCIPduInfo_st* pHIDci0Header, FAPI_dlHiPduInfo_st* pHiPdu, UeTerminal* pUeTerminal);  
         void calcAndProcessUlHarqTimer(UeTerminal* pUeTerminal);
         void handleUlSchConfig(UInt16 sfnsf, void* ulSchPdu, UeTerminal* pUeTerminal);
 

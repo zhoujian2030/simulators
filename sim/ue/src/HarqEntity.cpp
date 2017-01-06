@@ -143,7 +143,7 @@ UInt8 HarqEntity::getNumPreparedUlHarqProcess() {
 }
 
 // ------------------------------------------------
-void HarqEntity::handleAckNack(
+BOOL HarqEntity::handleAckNack(
     FAPI_dlHiDCIPduInfo_st* pHIDci0Header, 
     FAPI_dlHiPduInfo_st* pHiPdu, 
     UeTerminal* pUeTerminal)
@@ -154,13 +154,18 @@ void HarqEntity::handleAckNack(
     if (it != m_harqIdUlIndexMap.end()) {
         LOG_DEBUG(UE_LOGGER_NAME, "[UE: %d], [RA-RNTI: %d], [RNTI: %d], handle harq ack/nack in harq process %d\n", 
             pUeTerminal->m_ueId, pUeTerminal->m_raRnti, pUeTerminal->m_rnti, it->second);
-        m_ulHarqProcessList[it->second]->handleAckNack(harqId, pHIDci0Header->sfnsf, pHiPdu->hiValue, pUeTerminal);  
-        // delete the record as the harq process becomes free after ACK/NACK received
-        m_harqIdUlIndexMap.erase(it);
+        
+        if (m_ulHarqProcessList[it->second]->handleAckNack(harqId, pHIDci0Header->sfnsf, pHiPdu->hiValue, pUeTerminal)) {  
+            // delete the record as the harq process becomes free after ACK/NACK received
+            m_harqIdUlIndexMap.erase(it);
+            return TRUE;
+        }
     } else {
         LOG_ERROR(UE_LOGGER_NAME, "[UE: %d], [RA-RNTI: %d], [RNTI: %d], fail to find harq process by harqId = %d\n",
             pUeTerminal->m_ueId, pUeTerminal->m_raRnti, pUeTerminal->m_rnti, harqId);
     }     
+
+    return FALSE;
 }
 
 // -------------------------------------------    

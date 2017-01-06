@@ -41,7 +41,7 @@ namespace ue {
         void displayUlSchPduInfo(FAPI_ulSCHPduInfo_st* pUlSchPdu);
 
         void handleDci0Pdu(FAPI_dlHiDCIPduInfo_st* pHIDci0Header, FAPI_dlDCIPduInfo_st* pDci0Pdu);
-        void handleHIPdu(FAPI_dlHiDCIPduInfo_st* pHIDci0Header, FAPI_dlHiPduInfo_st* pHiPdu);
+        BOOL handleHIPdu(FAPI_dlHiDCIPduInfo_st* pHIDci0Header, FAPI_dlHiPduInfo_st* pHiPdu);
 
         // ------------------------------------------
         // callback functions of dl harq process 

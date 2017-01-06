@@ -117,8 +117,7 @@ void UeScheduler::handleDeleteUeReq(UInt16 rnti) {
 void UeScheduler::schedule() {
     m_pduIndexUeIdMap.clear();
 
-    //int numUeSchedule = MAC_UE_SUPPORTED;
-    int numUeSchedule = 1;
+    int numUeSchedule = 2;//MAC_UE_SUPPORTED;
     for(int i=0; i<numUeSchedule; i++) {
         m_ueList[i]->schedule(m_sfn, m_sf, this);
     }
@@ -264,12 +263,22 @@ void UeScheduler::resetUeTerminal(UInt16 rnti, UInt8 ueId) {
         }
     }
 
-    it = m_harqIdUeIdMap.begin();
-    while (it != m_harqIdUeIdMap.end()) {
-        if (it->second == ueId) {
-            m_harqIdUeIdMap.erase(it++);
+    // it = m_harqIdUeIdMap.begin();
+    // while (it != m_harqIdUeIdMap.end()) {
+    //     if (it->second == ueId) {
+    //         m_harqIdUeIdMap.erase(it++);
+    //     } else {
+    //         it++;
+    //     }
+    // }
+
+    std::vector<UInt32>::iterator iter = m_ueIdHarqIdVect.begin();
+    while (iter != m_ueIdHarqIdVect.end()) {
+        UInt8 foundUeId = ((*iter) >> 16) & 0xff;
+        if (foundUeId == ueId) {
+            iter = m_ueIdHarqIdVect.erase(iter);
         } else {
-            it++;
+            ++iter;
         }
     }
 }
@@ -647,21 +656,46 @@ void UeScheduler::handleHIDci0Req(FAPI_dlHiDCIPduInfo_st* pHIDci0Req) {
             LOG_DEBUG(UE_LOGGER_NAME,"Recv FAPI_HI_PDU, rbStart = %d, cyclicShift2_forDMRS = %d, hiValue = %d, iPHICH = %d, txPower = %d\n", 
                 pHiPdu->rbStart, pHiPdu->cyclicShift2_forDMRS, pHiPdu->hiValue, pHiPdu->iPHICH, pHiPdu->txPower);
 
+            UInt32 ueIdHarqId;
+            UInt8 ueId;
             UInt16 harqId = (pHiPdu->rbStart << 8) | pHiPdu->cyclicShift2_forDMRS;
-            map<UInt16, UInt8>::iterator it = m_harqIdUeIdMap.find(harqId);
-            if (it != m_harqIdUeIdMap.end()) {
-                UInt8 ueId = it->second;
-                if (ueId <= m_maxRaRntiUeId) {
-                    m_ueList[ueId-1]->handleHIPdu(pHIDci0Req, pHiPdu);
-
-                    // TBD. really need to delete it?
-                    m_harqIdUeIdMap.erase(it);
-                } else {
-                    LOG_ERROR(UE_LOGGER_NAME, "Invalid ueId = %d\n", ueId);
+            vector<UInt32>::iterator it = m_ueIdHarqIdVect.begin();
+            while(it!=m_ueIdHarqIdVect.end()) {
+                ueIdHarqId = *it;
+                LOG_DEBUG(UE_LOGGER_NAME, "ueIdHarqId = %04x\n", ueIdHarqId);
+                if ((ueIdHarqId & 0xffff) == harqId) {
+                    ueId = (ueIdHarqId >> 16) & 0xff;
+                    if (ueId <= m_maxRaRntiUeId) {
+                        if (m_ueList[ueId-1]->handleHIPdu(pHIDci0Req, pHiPdu)) {
+                            LOG_DEBUG(UE_LOGGER_NAME, "Handle harq ack success\n");
+                            m_ueIdHarqIdVect.erase(it);
+                            break;
+                        } else {
+                            LOG_INFO(UE_LOGGER_NAME, "Handle harq ack failed in ueId = %d\n", ueId);
+                        }
+                    } else {
+                        LOG_ERROR(UE_LOGGER_NAME, "Invalid ueId = %d\n", ueId);
+                    }
                 }
-            } else {
-                LOG_ERROR(UE_LOGGER_NAME, "Fail to get ueId by harqId = %d\n", harqId);
+
+                ++it;
             }
+
+            // UInt16 harqId = (pHiPdu->rbStart << 8) | pHiPdu->cyclicShift2_forDMRS;
+            // map<UInt16, UInt8>::iterator it = m_harqIdUeIdMap.find(harqId);
+            // if (it != m_harqIdUeIdMap.end()) {
+            //     UInt8 ueId = it->second;
+            //     if (ueId <= m_maxRaRntiUeId) {
+            //         m_ueList[ueId-1]->handleHIPdu(pHIDci0Req, pHiPdu);
+
+            //         // TBD. really need to delete it?
+            //         m_harqIdUeIdMap.erase(it);
+            //     } else {
+            //         LOG_ERROR(UE_LOGGER_NAME, "Invalid ueId = %d\n", ueId);
+            //     }
+            // } else {
+            //     LOG_ERROR(UE_LOGGER_NAME, "Fail to get ueId by harqId = %d\n", harqId);
+            // }
 
             numOfHI++;
             pNextPdu = ((UInt8 *)pNextPdu) + sizeof(FAPI_dlHiPduInfo_st);
@@ -675,14 +709,17 @@ void UeScheduler::handleHIDci0Req(FAPI_dlHiDCIPduInfo_st* pHIDci0Req) {
                 if (ueId <= m_maxRaRntiUeId) {
                     m_ueList[ueId-1]->handleDci0Pdu(pHIDci0Req, pDciPdu);
 
-                    // save the harqId as key to find ueId
-                    UInt16 harqId = (pDciPdu->rbStart << 8) | pDciPdu->cyclicShift2_forDMRS;
-                    pair<map<UInt16, UInt8>::iterator, bool> result = 
-                        m_harqIdUeIdMap.insert(map<UInt16, UInt8>::value_type(harqId, ueId));
-                    if (!result.second) {
-                        LOG_WARN(UE_LOGGER_NAME, "harqId 0x%04x record exists, overide it\n", harqId);
-                        (result.first)->second = ueId;
-                    }
+                    UInt32 ueIdHarqId = (ueId << 16) | (pDciPdu->rbStart << 8) | pDciPdu->cyclicShift2_forDMRS;
+                    m_ueIdHarqIdVect.push_back(ueIdHarqId);
+
+                    // // save the harqId as key to find ueId
+                    // UInt16 harqId = (pDciPdu->rbStart << 8) | pDciPdu->cyclicShift2_forDMRS;
+                    // pair<map<UInt16, UInt8>::iterator, bool> result = 
+                    //     m_harqIdUeIdMap.insert(map<UInt16, UInt8>::value_type(harqId, ueId));
+                    // if (!result.second) {
+                    //     LOG_WARN(UE_LOGGER_NAME, "harqId 0x%04x record exists, overide it\n", harqId);
+                    //     (result.first)->second = ueId;
+                    // }
                 } else {
                     LOG_ERROR(UE_LOGGER_NAME, "Invalid ueId = %d\n", ueId);
                 }
