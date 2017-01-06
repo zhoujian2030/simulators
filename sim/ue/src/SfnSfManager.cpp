@@ -89,7 +89,7 @@ unsigned long SfnSfManager::run() {
         //     LOG_DEBUG(UE_LOGGER_NAME, "Send notification to UE service\n");
         //     m_ueService->postEvent();
         // }
-        Thread::sleep(100);
+        Thread::sleep(200);
     }
 
     return 0; 

@@ -305,6 +305,8 @@ namespace ue {
         SInt8 m_srPeriodicity;
         UInt16 m_srSfn;
         UInt8 m_srSf;
+
+        Char8 m_uniqueId[30];
     };
 
     // ------------------------------------------------------

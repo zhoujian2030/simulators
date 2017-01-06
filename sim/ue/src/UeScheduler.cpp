@@ -117,7 +117,7 @@ void UeScheduler::handleDeleteUeReq(UInt16 rnti) {
 void UeScheduler::schedule() {
     m_pduIndexUeIdMap.clear();
 
-    int numUeSchedule = 2;//MAC_UE_SUPPORTED;
+    int numUeSchedule = 3;//MAC_UE_SUPPORTED;
     for(int i=0; i<numUeSchedule; i++) {
         m_ueList[i]->schedule(m_sfn, m_sf, this);
     }
