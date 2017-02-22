@@ -104,7 +104,7 @@ namespace ue {
                     node = m_head->prev;
                     if (node == m_head) {
                         // the pool is empty after allocating this node
-                        LOG_WARN(UE_LOGGER_NAME, "get last node!");
+                        LOG_WARN(UE_LOGGER_NAME, "[%s], get last node!\n", __func__);
                         m_head = 0;
                     } else {
                         node->prev->next = m_head;
@@ -112,14 +112,14 @@ namespace ue {
                     }
                 }
 
-                LOG_DEBUG(UE_LOGGER_NAME, "get node = %p\n", node);
+                LOG_DBG(UE_LOGGER_NAME, "[%s], get node = %p\n", __func__, node);
 
                 return node;
             }
 
             void freeNode(Node* node) {
                 if (node != 0) {
-                    LOG_DEBUG(UE_LOGGER_NAME, "free node = %p\n", node);
+                    LOG_DBG(UE_LOGGER_NAME, "[%s], free node = %p\n", __func__, node);
                     if (m_head == 0) {
                         m_head = node;
                         m_head->prev = node;

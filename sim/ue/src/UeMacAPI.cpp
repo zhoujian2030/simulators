@@ -39,7 +39,7 @@ UeMacAPI::~UeMacAPI() {
 
 // ----------------------------------------
 void UeMacAPI::handleRecvResult(UdpSocket* theSocket, int numOfBytesRecved) {
-    LOG_DEBUG(UE_LOGGER_NAME, "numOfBytesRecved = %d\n", numOfBytesRecved);
+    LOG_DBG(UE_LOGGER_NAME, "[%s], numOfBytesRecved = %d\n", __func__, numOfBytesRecved);
     int n = 0;
     for (int i=0; i<numOfBytesRecved; i++) {
         printf("%02x ", m_recvBuff[i]);
@@ -71,7 +71,7 @@ void UeMacAPI::handleSubFrameInd(UInt16 sfnsf) {
     m_sfn = ( sfnsf & 0xFFF0) >> 4;
     m_sf  = sfnsf & 0x000F;
     m_globalTick++;    
-    LOG_DEBUG(UE_LOGGER_NAME, "[%d.%d], globalTick = %d\n", m_sfn, m_sf, m_globalTick);
+    LOG_DBG(UE_LOGGER_NAME, "[%s], [%d.%d], globalTick = %d\n", __func__, m_sfn, m_sf, m_globalTick);
 
     this->resetSendBuffer();
 
@@ -87,32 +87,32 @@ void UeMacAPI::handleSubFrameInd(UInt16 sfnsf) {
 // ----------------------------------------
 void UeMacAPI::sendData() {
     if (m_rachDataLength > 0) {
-        LOG_DEBUG(UE_LOGGER_NAME, "send rach indication (%d): \n", m_rachDataLength);
+        LOG_DBG(UE_LOGGER_NAME, "[%s], send rach indication (%d): \n", __func__, m_rachDataLength);
         logBuff(m_rachBuffer, m_rachDataLength);
         m_txL2Socket->send((const char*)m_rachBuffer, m_rachDataLength, m_l2Address);
     }
 
     if (m_schDataLength > 0) {
         memcpy((void*)(m_schBuffer + m_schDataLength - m_schPduLength), (void*)m_schPduBuffer, m_schPduLength);
-        LOG_DEBUG(UE_LOGGER_NAME, "send sch indication (%d): \n", m_schDataLength);
+        LOG_DBG(UE_LOGGER_NAME, "[%s], send sch indication (%d): \n", __func__, m_schDataLength);
         logBuff(m_schBuffer, m_schDataLength);
         m_txL2Socket->send((const char*)m_schBuffer, m_schDataLength, m_l2Address);
     }
 
     if (m_crcDataLength > 0) {
-        LOG_DEBUG(UE_LOGGER_NAME, "send crc indication (%d): \n", m_crcDataLength);
+        LOG_DBG(UE_LOGGER_NAME, "[%s], send crc indication (%d): \n", __func__, m_crcDataLength);
         logBuff(m_crcBuffer, m_crcDataLength);
         m_txL2Socket->send((const char*)m_crcBuffer, m_crcDataLength, m_l2Address);
     }
 
     if (m_harqDataLength > 0) {
-        LOG_DEBUG(UE_LOGGER_NAME, "send harq indication (%d): \n", m_harqDataLength);
+        LOG_DBG(UE_LOGGER_NAME, "[%s], send harq indication (%d): \n", __func__, m_harqDataLength);
         logBuff(m_harqBuffer, m_harqDataLength);
         m_txL2Socket->send((const char*)m_harqBuffer, m_harqDataLength, m_l2Address);
     }
 
     if (m_srDataLength > 0) {
-        LOG_DEBUG(UE_LOGGER_NAME, "send SR indication (%d): \n", m_srDataLength);
+        LOG_DBG(UE_LOGGER_NAME, "[%s], send SR indication (%d): \n", __func__, m_srDataLength);
         logBuff(m_srBuffer, m_srDataLength);
         m_txL2Socket->send((const char*)m_srBuffer, m_srDataLength, m_l2Address);
     }
@@ -120,17 +120,17 @@ void UeMacAPI::sendData() {
 
 // ----------------------------------------
 void UeMacAPI::handleSendResult(UdpSocket* theSocket, int numOfBytesSent) {
-    LOG_DEBUG(UE_LOGGER_NAME, "handleSendResult()\n");
+    LOG_DBG(UE_LOGGER_NAME, "[%s], handleSendResult()\n", __func__);
 }
 
 // ----------------------------------------
 void UeMacAPI::handleCloseResult(UdpSocket* theSocket) {
-    LOG_DEBUG(UE_LOGGER_NAME, "handleCloseResult()\n");
+    LOG_DBG(UE_LOGGER_NAME, "[%s], handleCloseResult()\n", __func__);
 }
 
 // ----------------------------------------
 void UeMacAPI::handleErrorResult(UdpSocket* theSocket) {
-    LOG_DEBUG(UE_LOGGER_NAME, "handleErrorResult()\n");
+    LOG_DBG(UE_LOGGER_NAME, "[%s], handleErrorResult()\n", __func__);
 }
 
 

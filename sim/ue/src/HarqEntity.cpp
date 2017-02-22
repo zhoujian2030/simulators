@@ -43,7 +43,7 @@ HarqEntity::~HarqEntity() {
 
 // ------------------------------------------------
 void HarqEntity::reset() {
-    LOG_DEBUG(UE_LOGGER_NAME, "reset harq entity\n");
+    LOG_DBG(UE_LOGGER_NAME, "[%s], reset harq entity\n", __func__);
 
     map<UInt16, UInt16>::iterator ulIter = m_harqIdUlIndexMap.begin();
     while (ulIter != m_harqIdUlIndexMap.end()) {
@@ -82,7 +82,7 @@ BOOL HarqEntity::allocateUlHarqProcess(
         ulSfn = (ulSfn + 1) % 1024;
     }
     if (UeTerminal::m_ulSubframeList[ulSf] != 1) {
-        LOG_ERROR(UE_LOGGER_NAME, "%s, Invalid ulSf = %d\n", pUeTerminal->m_uniqueId, ulSf);
+        LOG_ERROR(UE_LOGGER_NAME, "[%s], %s, Invalid ulSf = %d\n", __func__, pUeTerminal->m_uniqueId, ulSf);
         pUeTerminal->allocateUlHarqCallback(harqId, FALSE);
         return FALSE;
     }
@@ -93,7 +93,7 @@ BOOL HarqEntity::allocateUlHarqProcess(
             pair<map<UInt16, UInt16>::iterator, bool> result = 
                 m_harqIdUlIndexMap.insert(map<UInt16, UInt16>::value_type(harqId, i));
             if (!result.second) {
-                LOG_ERROR(UE_LOGGER_NAME, "%s, harqId = %d is in used, not able to allocate\n", 
+                LOG_ERROR(UE_LOGGER_NAME, "[%s], %s, harqId = %d is in used, not able to allocate\n", __func__, 
                     pUeTerminal->m_uniqueId, harqId);
                 pUeTerminal->allocateUlHarqCallback(harqId, FALSE);
                 return FALSE;
@@ -105,7 +105,7 @@ BOOL HarqEntity::allocateUlHarqProcess(
     }
 
     if (pUlHarqProcess != 0) {
-        LOG_DEBUG(UE_LOGGER_NAME, "%s, allocate harq process success, harqId = 0x%04x\n", 
+        LOG_DBG(UE_LOGGER_NAME, "[%s], %s, allocate harq process success, harqId = 0x%04x\n", __func__, 
             pUeTerminal->m_uniqueId, harqId);
         pUeTerminal->allocateUlHarqCallback(harqId, TRUE);
         //
@@ -113,7 +113,7 @@ BOOL HarqEntity::allocateUlHarqProcess(
         return TRUE;
     }
 
-    LOG_DEBUG(UE_LOGGER_NAME, "%s, allocate harq process failed\n", pUeTerminal->m_uniqueId);
+    LOG_DBG(UE_LOGGER_NAME, "[%s], %s, allocate harq process failed\n", __func__, pUeTerminal->m_uniqueId);
     pUeTerminal->allocateUlHarqCallback(harqId, FALSE);
     return FALSE;
 }
@@ -122,7 +122,7 @@ BOOL HarqEntity::allocateUlHarqProcess(
 void HarqEntity::send(UeTerminal* pUeTerminal) {
     map<UInt16, UInt16>::iterator it;
     for (it = m_harqIdUlIndexMap.begin(); it != m_harqIdUlIndexMap.end(); ++it) {
-        LOG_DEBUG(UE_LOGGER_NAME, "%s, execute harq process %d, harqId = 0x%04x\n", 
+        LOG_DBG(UE_LOGGER_NAME, "[%s], %s, execute harq process %d, harqId = 0x%04x\n", __func__, 
             pUeTerminal->m_uniqueId, it->second, it->first);
         m_ulHarqProcessList[it->second]->send(it->first, pUeTerminal);
     }
@@ -151,7 +151,7 @@ BOOL HarqEntity::handleAckNack(
 
     map<UInt16, UInt16>::iterator it = m_harqIdUlIndexMap.find(harqId);
     if (it != m_harqIdUlIndexMap.end()) {
-        LOG_DEBUG(UE_LOGGER_NAME, "%s, handle harq ack/nack in harq process %d\n", pUeTerminal->m_uniqueId, it->second);
+        LOG_DBG(UE_LOGGER_NAME, "[%s], %s, handle harq ack/nack in harq process %d\n", __func__, pUeTerminal->m_uniqueId, it->second);
         
         if (m_ulHarqProcessList[it->second]->handleAckNack(harqId, pHIDci0Header->sfnsf, pHiPdu->hiValue, pUeTerminal)) {  
             // delete the record as the harq process becomes free after ACK/NACK received
@@ -159,7 +159,7 @@ BOOL HarqEntity::handleAckNack(
             return TRUE;
         }
     } else {
-        LOG_ERROR(UE_LOGGER_NAME, "%s, fail to find harq process by harqId = %d\n", pUeTerminal->m_uniqueId, harqId);
+        LOG_ERROR(UE_LOGGER_NAME, "[%s], %s, fail to find harq process by harqId = %d\n", __func__, pUeTerminal->m_uniqueId, harqId);
     }     
 
     return FALSE;
@@ -189,10 +189,10 @@ void HarqEntity::handleUlSchConfig(UInt16 sfnsf, void* ulSchPdu, UeTerminal* pUe
 
     map<UInt16, UInt16>::iterator it = m_harqIdUlIndexMap.find(harqId);
     if (it != m_harqIdUlIndexMap.end()) {
-        LOG_DEBUG(UE_LOGGER_NAME, "%s, handle UL SCH config in harq process %d\n", pUeTerminal->m_uniqueId, it->second);
+        LOG_DBG(UE_LOGGER_NAME, "[%s], %s, handle UL SCH config in harq process %d\n", __func__, pUeTerminal->m_uniqueId, it->second);
         m_ulHarqProcessList[it->second]->handleUlSchConfig(harqId, sfnsf, pUeTerminal);  
     } else {
-        LOG_ERROR(UE_LOGGER_NAME, "%s, fail to find harq process by harqId = %d\n", pUeTerminal->m_uniqueId, harqId);
+        LOG_ERROR(UE_LOGGER_NAME, "[%s], %s, fail to find harq process by harqId = 0x%04x\n", __func__, pUeTerminal->m_uniqueId, harqId);
     }    
 }
 
@@ -209,17 +209,17 @@ void HarqEntity::allocateDlHarqProcess(UInt16 sfnsf, FAPI_dciDLPduInfo_st* pDlDc
         UInt32 harqId = sfnsf;//pDciMsg->rbCoding;  // TBD
         UInt16 index = pDciMsg->harqProcessNum;
 
-        LOG_DEBUG(UE_LOGGER_NAME, "%s, harqProcessNum = %d, rbCoding = %d\n", 
+        LOG_DBG(UE_LOGGER_NAME, "[%s], %s, harqProcessNum = %d, rbCoding = %d\n", __func__, 
             pUeTerminal->m_uniqueId, pDciMsg->harqProcessNum, pDciMsg->rbCoding);
 
         if (index >= m_numDlHarqProcess) {
-            LOG_ERROR(UE_LOGGER_NAME, "%s, invalid harqProcessNum = %d\n", pUeTerminal->m_uniqueId, index);
+            LOG_ERROR(UE_LOGGER_NAME, "[%s], %s, invalid harqProcessNum = %d\n", __func__, pUeTerminal->m_uniqueId, index);
             pUeTerminal->allocateDlHarqCallback(index, FALSE);
             return;
         }
 
         if (!m_dlHarqProcessList[index]->isFree()) {
-            LOG_ERROR(UE_LOGGER_NAME, "%s, harq process is busy, harqProcessNum = %d\n", pUeTerminal->m_uniqueId, index);
+            LOG_ERROR(UE_LOGGER_NAME, "[%s], %s, harq process is busy, harqProcessNum = %d\n", __func__, pUeTerminal->m_uniqueId, index);
             pUeTerminal->allocateDlHarqCallback(index, FALSE);
             return;
         }
@@ -227,7 +227,7 @@ void HarqEntity::allocateDlHarqProcess(UInt16 sfnsf, FAPI_dciDLPduInfo_st* pDlDc
         pair<map<UInt32, UInt16>::iterator, bool> result = 
             m_harqIdDlIndexMap.insert(map<UInt32, UInt16>::value_type(harqId, index));
         if (!result.second) {
-            LOG_ERROR(UE_LOGGER_NAME, "%s, harqId = %d is in used, not able to allocate\n", pUeTerminal->m_uniqueId, harqId);
+            LOG_ERROR(UE_LOGGER_NAME, "[%s], %s, harqId = %d is in used, not able to allocate\n", __func__, pUeTerminal->m_uniqueId, harqId);
             pUeTerminal->allocateDlHarqCallback(index, FALSE);
             return;
         }
@@ -236,12 +236,12 @@ void HarqEntity::allocateDlHarqProcess(UInt16 sfnsf, FAPI_dciDLPduInfo_st* pDlDc
         UInt16 sfn  = (sfnsf & 0xfff0) >> 4;
         m_dlHarqProcessList[index]->prepareReceiving(sfn, sf, pUeTerminal->m_state);
 
-        LOG_DEBUG(UE_LOGGER_NAME, "%s, allocate dl harq process success\n", pUeTerminal->m_uniqueId);
+        LOG_DBG(UE_LOGGER_NAME, "[%s], %s, allocate dl harq process success\n", __func__, pUeTerminal->m_uniqueId);
         pUeTerminal->allocateDlHarqCallback(index, TRUE);
         return;
     } 
 
-    LOG_DEBUG(UE_LOGGER_NAME, "%s, allocate harq process failed due to unsupported dciFormat = %d\n", 
+    LOG_DBG(UE_LOGGER_NAME, "[%s], %s, allocate harq process failed due to unsupported dciFormat = %d\n", __func__, 
         pUeTerminal->m_uniqueId, pDlDciPdu->dciFormat);
     pUeTerminal->allocateDlHarqCallback(0, FALSE);
 }
@@ -253,7 +253,7 @@ void HarqEntity::handleDlSchConfig(UInt16 sfnsf, FAPI_dlSCHConfigPDUInfo_st* pDl
     if (it != m_harqIdDlIndexMap.end()) {
         m_dlHarqProcessList[it->second]->handleDlSchConfig(sfnsf, pUeTerminal);
     } else {
-        LOG_ERROR(UE_LOGGER_NAME, "%s, fail to find harq process by harqId = 0x%02x\n", pUeTerminal->m_uniqueId, harqId);
+        LOG_ERROR(UE_LOGGER_NAME, "[%s], %s, fail to find harq process by harqId = 0x%02x\n", __func__, pUeTerminal->m_uniqueId, harqId);
     }
 }
 
@@ -264,7 +264,7 @@ void HarqEntity::receive(UInt16 sfnsf, UInt8* theBuffer, UInt32 byteLen, UeTermi
     if (it != m_harqIdDlIndexMap.end()) {
         m_dlHarqProcessList[it->second]->receive(sfnsf, theBuffer, byteLen, pUeTerminal);
     } else {
-        LOG_ERROR(UE_LOGGER_NAME, "%s, fail to find harq process by harqId = 0x%02x\n", pUeTerminal->m_uniqueId, harqId);
+        LOG_ERROR(UE_LOGGER_NAME, "[%s], %s, fail to find harq process by harqId = 0x%02x\n", __func__, pUeTerminal->m_uniqueId, harqId);
     }
 }
 
@@ -299,7 +299,7 @@ HarqEntity::UlHarqProcess::~UlHarqProcess() {
 
 // ------------------------------------------------
 void HarqEntity::UlHarqProcess::free() {
-    LOG_DEBUG(UE_LOGGER_NAME, "m_index = %d\n", m_index);
+    LOG_DBG(UE_LOGGER_NAME, "[%s], m_index = %d\n", __func__, m_index);
     m_state = IDLE;
     m_ueState = 0;
     m_timerValue = -1;
@@ -307,7 +307,7 @@ void HarqEntity::UlHarqProcess::free() {
 
 // -------------------------------------------    
 void HarqEntity::UlHarqProcess::prepareSending(FAPI_dlDCIPduInfo_st* pDci0Pdu, UInt16 sfn, UInt8 sf, UInt8 ueState) {
-    LOG_DEBUG(UE_LOGGER_NAME, "m_index = %d, sfn = %d, sf = %d, ueState = %d\n", 
+    LOG_DBG(UE_LOGGER_NAME, "[%s], m_index = %d, sfn = %d, sf = %d, ueState = %d\n", __func__, 
             m_index, sfn, sf, ueState);
     m_state = PREPARE_SENDING;
     m_sendSfn = sfn;
@@ -320,7 +320,7 @@ void HarqEntity::UlHarqProcess::prepareSending(FAPI_dlDCIPduInfo_st* pDci0Pdu, U
 // ------------------------------------------------
 void HarqEntity::UlHarqProcess::send(UInt16 harqId, UeTerminal* pUeTerminal) {
     if (m_state != PREPARE_SENDING) {
-        LOG_ERROR(UE_LOGGER_NAME, "%s, HARQ Process is not ready to send, harqId = 0x%04x\n", pUeTerminal->m_uniqueId, harqId);
+        LOG_ERROR(UE_LOGGER_NAME, "[%s], %s, HARQ Process is not ready to send, harqId = 0x%04x\n", __func__, pUeTerminal->m_uniqueId, harqId);
         return;
     }
 
@@ -337,7 +337,7 @@ void HarqEntity::UlHarqProcess::send(UInt16 harqId, UeTerminal* pUeTerminal) {
 // ------------------------------------------------
 BOOL HarqEntity::UlHarqProcess::handleAckNack(UInt16 harqId, UInt16 sfnsf, UInt8 hiValue, UeTerminal* pUeTerminal) {
     if (m_state != TB_SENT) {
-        LOG_ERROR(UE_LOGGER_NAME, "%s, invalid m_state = %d, harqId = %d\n", 
+        LOG_ERROR(UE_LOGGER_NAME, "[%s], %s, invalid m_state = %d, harqId = %d\n", __func__, 
             pUeTerminal->m_uniqueId, m_state, harqId);
         return FALSE;
     }   
@@ -345,7 +345,7 @@ BOOL HarqEntity::UlHarqProcess::handleAckNack(UInt16 harqId, UInt16 sfnsf, UInt8
     UInt8 sf  = sfnsf & 0x000f;
     UInt16 sfn  = (sfnsf & 0xfff0) >> 4;
 
-    LOG_ERROR(UE_LOGGER_NAME, "%s, harqId = %d, hiValue = %d\n", pUeTerminal->m_uniqueId, harqId, hiValue);
+    LOG_ERROR(UE_LOGGER_NAME, "[%s], %s, harqId = %d, hiValue = %d\n", __func__, pUeTerminal->m_uniqueId, harqId, hiValue);
     
     UInt8 expectedHiSf = (m_sendSf + K_PHICH_FOR_TDD_UL_DL_CONFIG_2) % 10;
     UInt16 expectedHiSfn = (m_sendSfn + (m_sendSf + K_PHICH_FOR_TDD_UL_DL_CONFIG_2) / 10) % 1024;
@@ -362,7 +362,7 @@ BOOL HarqEntity::UlHarqProcess::handleAckNack(UInt16 harqId, UInt16 sfnsf, UInt8
         m_state = IDLE;
         return TRUE;
     } else {
-        LOG_WARN(UE_LOGGER_NAME, "%s, recv HI in unexpected sfnsf: 0x%04x\n", pUeTerminal->m_uniqueId, sfnsf); 
+        LOG_WARN(UE_LOGGER_NAME, "[%s], %s, recv HI in unexpected sfnsf: 0x%04x\n", __func__, pUeTerminal->m_uniqueId, sfnsf); 
         return FALSE;
     }
 
@@ -374,7 +374,7 @@ void HarqEntity::UlHarqProcess::handleUlSchConfig(UInt16 harqId, UInt16 sfnsf, U
     UInt8 sf = sfnsf & 0x0f;
 
     if (sfn != m_sendSfn || sf != m_sendSf) {
-        LOG_ERROR(UE_LOGGER_NAME, "%s, Invalid frame configured for UL SCH\n", pUeTerminal->m_uniqueId);
+        LOG_ERROR(UE_LOGGER_NAME, "[%s], %s, Invalid frame configured for UL SCH\n", __func__, pUeTerminal->m_uniqueId);
         return;
     } 
 
@@ -382,7 +382,7 @@ void HarqEntity::UlHarqProcess::handleUlSchConfig(UInt16 harqId, UInt16 sfnsf, U
         // only count this msg for statistics, UE will send RRC setup complete no matter MAC 
         // send this UL config or not
         StsCounter::getInstance()->countRRCSetupComplULCfgRecvd();
-        LOG_DEBUG(UE_LOGGER_NAME, "%s, UL config to receive RRC setup complete\n", pUeTerminal->m_uniqueId); 
+        LOG_DBG(UE_LOGGER_NAME, "[%s], %s, UL config to receive RRC setup complete\n", __func__, pUeTerminal->m_uniqueId); 
     } else {
         // TODO
     }
@@ -394,12 +394,12 @@ BOOL HarqEntity::UlHarqProcess::calcAndProcessTimer(UInt16 harqId, UeTerminal* p
         return FALSE;
     }
 
-    LOG_DEBUG(UE_LOGGER_NAME, "%s, harqId = 0x%04x, m_timerValue = %d\n", pUeTerminal->m_uniqueId, harqId, m_timerValue);
+    LOG_DBG(UE_LOGGER_NAME, "[%s], %s, harqId = 0x%04x, m_timerValue = %d\n", __func__, pUeTerminal->m_uniqueId, harqId, m_timerValue);
  
     BOOL isTimeout = FALSE;
     if (m_timerValue == 0) {
         // contention resolution timeout        
-        LOG_ERROR(UE_LOGGER_NAME, "%s, harq timeout\n", pUeTerminal->m_uniqueId);
+        LOG_ERROR(UE_LOGGER_NAME, "[%s], %s, harq timeout\n", __func__, pUeTerminal->m_uniqueId);
         pUeTerminal->ulHarqTimeoutCallback(harqId, m_ueState);
         m_state = IDLE;
         m_ueState = 0;
@@ -425,14 +425,14 @@ HarqEntity::DlHarqProcess::~DlHarqProcess() {
 
 // ------------------------------------------------
 void HarqEntity::DlHarqProcess::free() {    
-    LOG_DEBUG(UE_LOGGER_NAME, "m_index = %d\n", m_index);
+    LOG_DBG(UE_LOGGER_NAME, "[%s], m_index = %d\n", __func__, m_index);
     m_state = IDLE;
     m_ueState = 0;
 }
 
 // -------------------------------------------    
 void HarqEntity::DlHarqProcess::prepareReceiving(UInt16 sfn, UInt8 sf, UInt8 ueState) {
-    LOG_DEBUG(UE_LOGGER_NAME, "m_index = %d, sfn = %d, sf = %d, ueState = %d\n", 
+    LOG_DBG(UE_LOGGER_NAME, "[%s], m_index = %d, sfn = %d, sf = %d, ueState = %d\n", __func__, 
             m_index, sfn, sf, ueState);
     m_state = PREPARE_RECEIVING;
     m_recvSfn = sfn;
@@ -446,7 +446,7 @@ void HarqEntity::DlHarqProcess::handleDlSchConfig(UInt16 sfnsf, UeTerminal* pUeT
     UInt8 sf = sfnsf & 0x0f;
 
     if (sfn != m_recvSfn || sf != m_recvSf) {
-        LOG_ERROR(UE_LOGGER_NAME, "%s, Invalid frame configured for DL SCH\n", pUeTerminal->m_uniqueId);
+        LOG_ERROR(UE_LOGGER_NAME, "[%s], %s, Invalid frame configured for DL SCH\n", __func__, pUeTerminal->m_uniqueId);
         // DO NOT invoke callback to terminate connection, just let it timeout if no other SCH received (T300)
         return;
     } 
@@ -457,7 +457,7 @@ void HarqEntity::DlHarqProcess::handleDlSchConfig(UInt16 sfnsf, UeTerminal* pUeT
 // -------------------------------------------    
 void HarqEntity::DlHarqProcess::receive(UInt16 sfnsf, UInt8* theBuffer, UInt32 byteLen, UeTerminal* pUeTerminal) {
     if (m_state != PREPARE_RECEIVING) {
-        LOG_ERROR(UE_LOGGER_NAME, "%s, Invalid m_state = %d\n", pUeTerminal->m_uniqueId, m_state);
+        LOG_ERROR(UE_LOGGER_NAME, "[%s], %s, Invalid m_state = %d\n", __func__, pUeTerminal->m_uniqueId, m_state);
         return;
     }
 
@@ -465,7 +465,7 @@ void HarqEntity::DlHarqProcess::receive(UInt16 sfnsf, UInt8* theBuffer, UInt32 b
     UInt8 sf = sfnsf & 0x0f;
 
     if (sfn != m_recvSfn || sf != m_recvSf) {
-        LOG_ERROR(UE_LOGGER_NAME, "%s, Invalid frame configured for DL DATA\n", pUeTerminal->m_uniqueId);
+        LOG_ERROR(UE_LOGGER_NAME, "[%s], %s, Invalid frame configured for DL DATA\n", __func__, pUeTerminal->m_uniqueId);
         // DO NOT invoke callback to terminate connection, just let it timeout if no other DATA received (T300)
         return;
     }  
@@ -487,13 +487,13 @@ void HarqEntity::DlHarqProcess::receive(UInt16 sfnsf, UInt8* theBuffer, UInt32 b
 
     m_state = TB_RECEIVED;
 
-    LOG_DEBUG(UE_LOGGER_NAME, "%s, harq ack will be sent in %d.%d\n", pUeTerminal->m_uniqueId, m_harqAckSfn, m_harqAckSf); 
+    LOG_DBG(UE_LOGGER_NAME, "[%s], %s, harq ack will be sent in %d.%d\n", __func__, pUeTerminal->m_uniqueId, m_harqAckSfn, m_harqAckSf); 
 }
 
 // -------------------------------------------    
 BOOL HarqEntity::DlHarqProcess::sendAck(UInt16 sfn, UInt8 sf, BOOL isFirstAckSent, UeTerminal* pUeTerminal) {
     if (m_state != TB_RECEIVED) {
-        LOG_ERROR(UE_LOGGER_NAME, "%s, Invalid m_state = %d\n", pUeTerminal->m_uniqueId, m_state);
+        LOG_ERROR(UE_LOGGER_NAME, "[%s], %s, Invalid m_state = %d\n", __func__, pUeTerminal->m_uniqueId, m_state);
         return FALSE;
     }
 

@@ -50,14 +50,14 @@ unsigned long UeService::run() {
 
         // m_msEvent.wait();
         // pSfnSfMgr->getSFAndSFN(&sfn, &sf);
-        // LOG_DEBUG(UE_LOGGER_NAME, "sfn = %d, sf = %d\n", sfn, sf);
+        // LOG_DBG(UE_LOGGER_NAME, "[%s], sfn = %d, sf = %d\n",  __func__, sfn, sf);
         // while(1) {
         //     recvLength = m_udpServerSocket->receive((Int8*)m_recvBuffer, SOCKET_BUFFER_LENGTH, remoteAddress);
         //     if ( recvLength <= 0) {
-        //         //LOG_DEBUG(UE_LOGGER_NAME, "no data receive\n");
+        //         //LOG_DBG(UE_LOGGER_NAME, "no data receive\n");
         //         break;
         //     }
-        //     LOG_DEBUG(UE_LOGGER_NAME, "recv data (%d): \n", recvLength);
+        //     LOG_DBG(UE_LOGGER_NAME, "[%s], recv data (%d): \n",  __func__, recvLength);
         //     int n = 0;
         //     for (int i=0; i<recvLength; i++) {
         //         printf("%02x ", (UInt8)m_recvBuffer[i]);

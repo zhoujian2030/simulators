@@ -126,10 +126,20 @@ namespace ue {
             bsrTimer = 40   // self-defined TODO
         };
 
+        struct RarUlGrant {
+            UInt8 hoppingFlag;
+            UInt16 rbMap;
+            UInt8 coding;
+            UInt8 tpc;
+            UInt8 ulDelay;
+            UInt8 cqiReq;
+        };
+
         struct RandomAccessResp {
             UInt8 rapid;
             UInt16 ta;
-            UInt32 ulGrant;
+            // UInt32 ulGrant;
+            RarUlGrant ulGrant;
             UInt16 tcRnti;
         };
 
@@ -325,35 +335,39 @@ namespace ue {
 
     // ------------------------------------------------------
     inline void UeTerminal::setSfnSfForMsg3() {
-        BOOL foundUlSf = FALSE;
+        // refer to 36.213, section 6.1.1 
+        UInt8 minK1 = 6;
+        UInt8 sf = m_provSf + minK1;
+        UInt16 sfn = m_provSfn;
         BOOL foundFirstUlSf = FALSE;
-        for (Int i=m_provSf; i<10; i++) {
-            if (m_ulSubframeList[i] == 1) {
-                if (!foundFirstUlSf) {
-                    foundFirstUlSf = TRUE;
-                    continue;
-                } else {
-                    foundUlSf = TRUE;
-                    m_msg3Sf = i;
-                    m_msg3Sfn = m_provSfn;
-                    break;
-                }
+        while (1) {
+            if (sf >= 10) {
+                sf = sf - 10;
+                sfn = (sfn + 1) % 1024;
             }
-        }
 
-        if (!foundUlSf) {
-            for (Int i=0; i<10; i++) {
-                if (m_ulSubframeList[i] == 1) {
-                    if (!foundFirstUlSf) {
-                        foundFirstUlSf = TRUE;
-                        continue;
-                    } else {
-                        m_msg3Sf = i;
-                        m_msg3Sfn = (m_provSfn + 1)%1024;
+            if (m_ulSubframeList[sf] == 1) {
+                if (m_dlSchMsg->rar.ulGrant.ulDelay == 0) {
+                    // if ulDelay = 0
+                    // send MSG3 in the first UL subframe starting from n+k1 subframe,
+                    // where n is the subframe received MSG2, k1 >= 6
+                    m_msg3Sf = sf;
+                    m_msg3Sfn = sfn;
+                    break;
+                } else {
+                    // if ulDelay = 1
+                    // send MSG3 in the second UL subframe starting from n+k1 subframe,
+                    if (foundFirstUlSf) {
+                        m_msg3Sf = sf;
+                        m_msg3Sfn = sfn;
                         break;
+                    } else {                        
+                        foundFirstUlSf = TRUE;
                     }
                 }
             }
+
+            ++sf;
         }
     }
 

@@ -21,7 +21,7 @@ MutexLock SfnSfManager::m_lock;
 SfnSfManager::SfnSfManager() 
 : Thread("SfnSfThread"), m_sfn(0), m_sf(0)
 {
-     LOG_DEBUG(UE_LOGGER_NAME, "SfnSfManager initialized\n");
+     LOG_DBG(UE_LOGGER_NAME, "[%s], SfnSfManager initialized\n", __func__);
      m_udpClientSocket = new UdpSocket();
      m_udpClientSocket->makeNonBlocking();
      memset((void*)m_buffer, 0, SFN_SF_MSG_BUFF_SIZE);
@@ -80,16 +80,16 @@ unsigned long SfnSfManager::run() {
         }
         globalTick++;
 
-        LOG_DEBUG(UE_LOGGER_NAME, "Send sfn and sf to L2 and UE, globalTick = %d\n", globalTick);
+        LOG_DBG(UE_LOGGER_NAME, "[%s], Send sfn and sf to L2 and UE, globalTick = %d\n", __func__, globalTick);
         msgBody->sfnsf = (m_sfn << 4) | (m_sf & 0x000F);
         m_udpClientSocket->send((const char*)m_buffer, msgLength, l2Address);
         m_udpClientSocket->send((const char*)m_buffer, msgLength, ueAddress);
 
         // if (m_ueService != 0) {
-        //     LOG_DEBUG(UE_LOGGER_NAME, "Send notification to UE service\n");
+        //     LOG_DBG(UE_LOGGER_NAME, "[%s], Send notification to UE service\n", __func__);
         //     m_ueService->postEvent();
         // }
-        Thread::sleep(200);
+        Thread::sleep(100);
     }
 
     return 0; 
