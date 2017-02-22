@@ -123,7 +123,8 @@ namespace ue {
             macContentionResolutionTimer = 48, // from SIB2
             identityRequestTimer = 1000,  // self-defined
             tddAckNackFeedbackMode = 0,  // bundling mode, from RRC setup
-            bsrTimer = 40   // self-defined TODO
+            bsrTimer = 40,   // self-defined TODO
+            msg4AckRespTimer = 30   // timer to wait response to RRC Request from RRC
         };
 
         struct RarUlGrant {
@@ -206,6 +207,7 @@ namespace ue {
         void scheduleSR(UeScheduler* pUeScheduler);
         void scheduleDCCH(UeScheduler* pUeScheduler);
         void processDlHarq(UeScheduler* pUeScheduler);
+        void processTimer(UeScheduler* pUeScheduler);
 
         // timer to wait RRC connection setup complete
         SInt32 m_t300Value;
@@ -224,6 +226,12 @@ namespace ue {
         void startContentionResolutionTimer();
         void stopContentionResolutionTimer();
         BOOL processContentionResolutionTimer();
+
+        // timer to wait RRC Setup after MSG4 HARQ ACK sent
+        SInt8 m_rrcSetupTValue;
+        void startRRCSetupTimer();
+        void stopRRCSetupTimer();
+        BOOL processRRCSetupTimer();
 
         void buildMsg3Data();
         void buildMsg3WithRnti();
@@ -379,6 +387,16 @@ namespace ue {
     // --------------------------------------------------------
     inline void UeTerminal::stopContentionResolutionTimer() {
         m_contResolutionTValue = -1;
+    }
+
+    // --------------------------------------------------------
+    inline void UeTerminal::startRRCSetupTimer() {
+        m_rrcSetupTValue = msg4AckRespTimer;
+    }
+
+    // --------------------------------------------------------
+    inline void UeTerminal::stopRRCSetupTimer() {
+        m_rrcSetupTValue = -1;
     }
 
     // -------------------------------------------------------

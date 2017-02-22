@@ -56,6 +56,7 @@ namespace ue {
         void countTACmdRecvd();
         void countForceULGrantRecvd();
         void countBSRTimeout();
+        void countRRCSetupTimeout();
 
     private:
         StsCounter();
@@ -111,7 +112,14 @@ namespace ue {
         UInt32 m_numForceULGrantRecvd;
 
         UInt32 m_numBsrTimeout;
+
+        UInt32 m_numRRCSetupTimeout;
     };
+
+    // -----------------------------------------
+    inline void StsCounter::countRRCSetupTimeout() {
+        m_numRRCSetupTimeout++;
+    }
 
     // -----------------------------------------
     inline void StsCounter::countBSRTimeout() {

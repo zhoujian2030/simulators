@@ -19,10 +19,10 @@ StsCounter::StsCounter()
   m_msg3UlCfgRecvd(0), m_msg3Sent(0), m_msg3CrcSent(0), m_contentionResolutionRecvd(0),
   m_contentionResolutionInvalid(0), m_contentionResolutionTimeout(0), m_harqAckSent(0),
   m_rrcSetupRecvd(0),m_rrcSetupInvalid(0), m_srSent(0), m_srTimeout(0), m_rrcSetupComplDCI0Recvd(0),
-  m_rrcSetupComplUlCfgRecvd(0), m_rrcSetupComplSent(0), m_rrcSetupComplCrcSent(0), m_identityReqRecvd(0), 
-  m_identityReqTimeout(0), m_rrcSetupComplHarqTimeout(0), m_harqTimeout(0), m_harqAckRecvd(0), m_harqNAckRecvd(0),
+  m_rrcSetupComplUlCfgRecvd(0), m_rrcSetupComplSent(0), m_rrcSetupComplCrcSent(0), m_rrcSetupComplHarqTimeout(0),
+  m_harqTimeout(0), m_harqAckRecvd(0), m_harqNAckRecvd(0), m_identityReqRecvd(0), m_identityReqTimeout(0),
   m_identityRespSent(0), m_attachRejectRecvd(0), m_rrcReleaseRecvd(0), m_t300Timeout(0), m_nonConsecutiveSfnSf(0),
-  m_numTACmdRecvd(0), m_numForceULGrantRecvd(0), m_numBsrTimeout(0)
+  m_numTACmdRecvd(0), m_numForceULGrantRecvd(0), m_numBsrTimeout(0), m_numRRCSetupTimeout(0)
 {
 
 }
@@ -73,6 +73,7 @@ void StsCounter::show() {
     LOG_INFO(UE_LOGGER_NAME, " Num RAR invalid:                      %d\n", m_rarInvalid);
     LOG_INFO(UE_LOGGER_NAME, " Num Contention Resolution invalid:    %d\n", m_contentionResolutionInvalid);
     LOG_INFO(UE_LOGGER_NAME, " Num Contention Resolution timeout:    %d\n", m_contentionResolutionTimeout);
+    LOG_INFO(UE_LOGGER_NAME, " Num RRC setup timeout:                %d\n", m_numRRCSetupTimeout);    
     LOG_INFO(UE_LOGGER_NAME, " Num RRC setup invalid:                %d\n", m_rrcSetupInvalid);
     LOG_INFO(UE_LOGGER_NAME, " Num SR timeout:                       %d\n", m_srTimeout);
     LOG_INFO(UE_LOGGER_NAME, " Num BSR timeout:                      %d\n", m_numBsrTimeout);

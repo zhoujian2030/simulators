@@ -93,6 +93,7 @@ void UeTerminal::schedule(UInt16 sfn, UInt8 sf, UeScheduler* pUeScheduler) {
     this->scheduleSR(pUeScheduler);
     this->scheduleDCCH(pUeScheduler);
     this->processDlHarq(pUeScheduler);
+    this->processTimer(pUeScheduler);
     // TODO
 }
 
@@ -308,6 +309,17 @@ void UeTerminal::processDlHarq(UeScheduler* pUeScheduler) {
     m_harqEntity->sendAck(m_sfn, m_sf, this);
 }
 
+// --------------------------------------------
+void UeTerminal::processTimer(UeScheduler* pUeScheduler) {
+    if (m_state == MSG4_ACK_SENT) {
+        if (processRRCSetupTimer()) {
+            this->reset();
+            StsCounter::getInstance()->countTestFailure();
+            pUeScheduler->resetUeTerminal(m_rnti, m_ueId);
+        }
+    }
+}
+
 // --------------------------------------------------------
 BOOL UeTerminal::processContentionResolutionTimer() {
     if (m_contResolutionTValue < 0) {
@@ -326,6 +338,26 @@ BOOL UeTerminal::processContentionResolutionTimer() {
         
     m_contResolutionTValue--;
     return FALSE;
+}
+
+// --------------------------------------------------------
+BOOL UeTerminal::processRRCSetupTimer() {
+    if (m_rrcSetupTValue < 0) {
+        return FALSE;
+    }
+
+    LOG_DBG(UE_LOGGER_NAME, "[%s], %s, m_rrcSetupTValue = %d\n",  __func__, m_uniqueId, m_rrcSetupTValue);
+
+    if (m_rrcSetupTValue == 0) {
+        // wait RRC Setup timeout
+        LOG_ERROR(UE_LOGGER_NAME, "[%s], %s, No RRC Setup received\n",  __func__, m_uniqueId);
+        StsCounter::getInstance()->countRRCSetupTimeout();
+        m_rrcSetupTValue = -1;
+        return TRUE;
+    } 
+        
+    m_rrcSetupTValue--;
+    return FALSE;    
 }
 
 // -------------------------------------------------------
@@ -1054,6 +1086,7 @@ void UeTerminal::dlHarqReceiveCallback(UInt16 harqProcessNum, UInt8* theBuffer, 
         } else if (m_state == RRC_SETUP_SCH_RECVD) {
             if (parseRRCSetupPdu(theBuffer, byteLen)) {
                 m_state = RRC_SETUP_RECVD;
+                this->stopRRCSetupTimer();
                 StsCounter::getInstance()->countRRCSetupRecvd();
             } else {
                 StsCounter::getInstance()->countRRCSetupInvalid();
@@ -1110,6 +1143,7 @@ void UeTerminal::dlHarqResultCallback(UInt16 harqProcessNum, UInt8 ackFlag, BOOL
             
             if (m_state == MSG4_RECVD) {
                 m_state = MSG4_ACK_SENT;
+                this->startRRCSetupTimer();
             } else if (m_state == RRC_SETUP_RECVD) {
                 m_state = RRC_SETUP_ACK_SENT;
                 this->setSfnSfForSR();
