@@ -242,7 +242,7 @@ namespace ue {
         BOOL parseContentionResolutionPdu(UInt8* data, UInt32 pduLen);
 
         BOOL parseRRCSetupPdu(UInt8* data, UInt32 pduLen);
-        void setSfnSfForSR();
+        void setSfnSfForSR(BOOL isRetransmitSR = FALSE);
         void requestUlResource();
 
         friend class HarqEntity;
@@ -297,6 +297,10 @@ namespace ue {
         UInt16 m_rachSfn;
         UInt16 m_raTicks;
 
+        UInt16 m_rachSfnDelay;
+        BOOL m_firstRachSfnSet;
+        BOOL m_firstRachSent;
+
         // subframe in which to send MSG3
         // this can be calculated according the sfnsf received Rar 
         // MAC will send UL config to phy one tick earlier for 
@@ -321,6 +325,8 @@ namespace ue {
         BOOL m_needSendSR;
         UInt8 m_srConfigIndex;
         SInt8 m_srPeriodicity;
+        UInt8 m_dsrTransMax;
+        UInt8 m_srCounter;
         UInt16 m_srSfn;
         UInt8 m_srSf;
 

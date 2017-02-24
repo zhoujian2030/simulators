@@ -327,6 +327,8 @@ void HarqEntity::UlHarqProcess::send(UInt16 harqId, UeTerminal* pUeTerminal) {
     UInt16 curSfn = pUeTerminal->m_sfn;
     UInt8 curSf = pUeTerminal->m_sf;
 
+    //LOG_DBG(UE_LOGGER_NAME, "[%s], curSfn = %d, curSf = %d\n", __func__, curSfn, curSf);
+
     if (curSfn == m_sendSfn && curSf == m_sendSf) {
         pUeTerminal->ulHarqSendCallback(harqId, m_numRb, m_mcs, m_ueState);
         m_state = TB_SENT;

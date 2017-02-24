@@ -24,7 +24,7 @@ const UInt8 UeTerminal::m_ulSubframeList[10] = {0, 0, 1, 0, 0, 0, 0, 1, 0, 0};
 // --------------------------------------------
 UeTerminal::UeTerminal(UInt8 ueId, UInt16 raRnti, UeMacAPI* ueMacAPI) 
 : m_ueMacAPI(ueMacAPI), m_ueId(ueId), m_raRnti(raRnti), m_preamble(raRnti), m_ta(31),m_rachTa(0), m_state(IDLE),
-  m_subState(IDLE), m_rachSf(SUBFRAME_SENT_RACH), m_rachSfn(0), m_srConfigIndex(17)
+  m_subState(IDLE), m_rachSf(SUBFRAME_SENT_RACH), m_rachSfn(0), m_srConfigIndex(17), m_dsrTransMax(64), m_srCounter(0)
 {
     m_harqEntity = new HarqEntity(NUM_UL_HARQ_PROCESS, NUM_DL_HARQ_PROCESS);
 
@@ -45,6 +45,11 @@ UeTerminal::UeTerminal(UInt8 ueId, UInt16 raRnti, UeMacAPI* ueMacAPI)
     m_rlcLayer = new RlcLayer(this, m_pdcpLayer);
     m_triggerIdRsp = FALSE;
     m_triggerRlcStatusPdu = FALSE;
+
+    // 
+    m_rachSfnDelay = (m_ueId - 1) / 4;
+    m_firstRachSent = FALSE;
+    m_firstRachSfnSet = FALSE;
 
     sprintf(m_uniqueId, "[%02x.%04x.%04x]", m_ueId, m_raRnti, 0xffff);
     //LOG_DBG(UE_LOGGER_NAME, "[%s], %s\n",  __func__, m_uniqueId);
@@ -113,8 +118,23 @@ void UeTerminal::handleDeleteUeReq() {
 void UeTerminal::scheduleRach(UeScheduler* pUeScheduler) {    
     LOG_DBG(UE_LOGGER_NAME, "[%s], %s\n",  __func__, m_uniqueId);
 
+    if (!m_firstRachSfnSet) {
+        m_rachSfn = m_sfn + m_rachSfnDelay;
+        m_firstRachSfnSet = TRUE;
+    }
+
     if (m_state == IDLE && m_sf == m_rachSf) {
-        m_rachSfn = m_sfn;
+        if (!m_firstRachSent) {
+            if (m_sfn >= m_rachSfn) {
+                m_firstRachSent = TRUE;
+                m_rachSfn = m_sfn;
+            } else {
+                return;
+            }          
+        } else {
+            m_rachSfn = m_sfn;
+        }
+
         m_raTicks = 0;
 
         // reset m_rnti value
@@ -240,9 +260,14 @@ void UeTerminal::scheduleSR(UeScheduler* pUeScheduler) {
         }
     } else {
         if (processSRTimer()) {
-            this->reset();
-            StsCounter::getInstance()->countTestFailure();
-            pUeScheduler->resetUeTerminal(m_rnti, m_ueId);
+            if (m_srCounter < m_dsrTransMax) {
+                LOG_DBG(UE_LOGGER_NAME, "[%s], %s, prepare retransmitting SR, m_srCounter = %d\n",  __func__, m_uniqueId, m_srCounter);
+                setSfnSfForSR(TRUE);
+            } else {
+                this->reset();
+                StsCounter::getInstance()->countTestFailure();
+                pUeScheduler->resetUeTerminal(m_rnti, m_ueId);
+            }
         }
     }
 }
@@ -562,8 +587,14 @@ void UeTerminal::buildBSRAndData(BOOL isLongBSR) {
     msgLen += sizeof(FAPI_ulDataPduIndication_st);  
 
     if (!isLongBSR) {
-        UInt8 bsr[BSR_MSG_LENGTH] = {0x3a, 0x3d, 0x1f, 0x00, 0x12};
-        m_ueMacAPI->addSchPduData(bsr, pUlDataPduInd->length);
+        if (!m_triggerRlcStatusPdu) {
+            UInt8 bsr[BSR_MSG_LENGTH] = {0x3a, 0x3d, 0x1f, 0x00, 0x12};
+            m_ueMacAPI->addSchPduData(bsr, pUlDataPduInd->length);
+        } else {
+            UInt8 bsr[BSR_MSG_LENGTH] = {0x3d, 0x21, 0x02, 0x1f, 0x12, m_rlcStatusPdu[0], m_rlcStatusPdu[1]};
+            m_ueMacAPI->addSchPduData(bsr, pUlDataPduInd->length);
+            m_triggerRlcStatusPdu = FALSE;
+        }
         startBSRTimer();
     } else {
         if (!m_triggerIdRsp && !m_triggerRlcStatusPdu) {
@@ -1499,7 +1530,7 @@ BOOL UeTerminal::parseRRCSetupPdu(UInt8* data, UInt32 pduLen) {
 }
 
 // ------------------------------------------------------
-void UeTerminal::setSfnSfForSR() {
+void UeTerminal::setSfnSfForSR(BOOL isRetransmitSR) {
     // only valid for TDD DL/UL config 2
 
     // if m_srConfigIndex = 17, ul sf = 2, ul sfn = 0, 2, 4, 6, ...
@@ -1507,6 +1538,12 @@ void UeTerminal::setSfnSfForSR() {
 
     // refer to 36.213 Table 10.1.5-1
     LOG_WARN(UE_LOGGER_NAME, "[%s], %s, m_srConfigIndex = %d\n",  __func__, m_uniqueId, m_srConfigIndex);
+
+    if (!isRetransmitSR) {
+        m_srCounter = 0;
+    } else {
+        m_srCounter++;
+    }
 
     SInt8 nOffset = 0;
     if ((m_srConfigIndex >= 15) && (m_srConfigIndex <= 34)) {
@@ -1536,7 +1573,7 @@ void UeTerminal::setSfnSfForSR() {
         m_srSfn = (m_srSfn + (m_srPeriodicity - tmp) / 10) % 1024;
     }
     
-    LOG_WARN(UE_LOGGER_NAME, "[%s], %s, m_srSfnSf = %d.%dn", __func__, m_uniqueId, m_srSfn, m_srSf);
+    LOG_WARN(UE_LOGGER_NAME, "[%s], %s, m_srSfnSf = %d.%d\n", __func__, m_uniqueId, m_srSfn, m_srSf);
 
     m_needSendSR = TRUE;
 }

@@ -142,6 +142,12 @@ void RlcLayer::reassembleAMDPdu(AmdHeader* header, UInt8* buffer, UInt32 length)
         m_numSegRecvd = 1;
     } else if (header->fi == FI_02_LAST_SEG) {
         LOG_DBG(UE_LOGGER_NAME, "[%s], receive the last segment\n", __func__);
+
+        if (m_firstSeg == 0) {
+            LOG_ERROR(UE_LOGGER_NAME, "[%s], invalid segment, drop it\n", __func__);
+            return;
+        }
+        
         Node* prevSeg = m_firstSeg->prev;
         UInt16 expectSn = (prevSeg->sn + 1) % 1023;
         if (expectSn != header->sn) {
