@@ -123,7 +123,8 @@ namespace ue {
             macContentionResolutionTimer = 48, // from SIB2
             identityRequestTimer = 1000,  // self-defined
             tddAckNackFeedbackMode = 0,  // bundling mode, from RRC setup
-            bsrTimer = 40,   // self-defined TODO
+            periodicBSRTimer = 20, // from RRC setup
+            reTxBsrTimer = 320,   // from RRC setup
             msg4AckRespTimer = 30   // timer to wait response to RRC Request from RRC
         };
 
@@ -441,7 +442,7 @@ namespace ue {
 
     // -------------------------------------------------------
     inline void UeTerminal::startBSRTimer() {
-        m_bsrTValue = bsrTimer;
+        m_bsrTValue = reTxBsrTimer;
     }
 
     // -------------------------------------------------------
@@ -451,7 +452,7 @@ namespace ue {
 
     // -------------------------------------------------------
     inline BOOL UeTerminal::isNonZeroBSRSent() {
-        return ((m_bsrTValue > 0) && (m_bsrTValue <= bsrTimer));
+        return ((m_bsrTValue > 0) && (m_bsrTValue <= reTxBsrTimer));
     }
 }
 
