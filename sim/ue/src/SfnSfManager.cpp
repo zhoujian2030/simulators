@@ -5,6 +5,8 @@
  *      Author: j.zhou
  */
 
+#ifdef OS_LINUX
+
 #include "SfnSfManager.h"
 #include "UeService.h"
 #include "CLogger.h"
@@ -89,8 +91,10 @@ unsigned long SfnSfManager::run() {
         //     LOG_DBG(UE_LOGGER_NAME, "[%s], Send notification to UE service\n", __func__);
         //     m_ueService->postEvent();
         // }
-        Thread::sleep(500);
+        Thread::sleep(200);
     }
 
     return 0; 
 }
+
+#endif

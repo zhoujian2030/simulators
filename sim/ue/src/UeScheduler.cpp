@@ -10,7 +10,11 @@
 #include "UeScheduler.h"
 #include "UeTerminal.h"
 #include "UeMacAPI.h"
+#ifdef OS_LINUX
 #include "CLogger.h"
+#else
+#include "../sysService/common/logger.h"
+#endif
 
 using namespace ue;
 using namespace std;
@@ -117,7 +121,7 @@ void UeScheduler::handleDeleteUeReq(UInt16 rnti) {
 void UeScheduler::schedule() {
     m_pduIndexUeIdMap.clear();
 
-    int numUeSchedule = 4;//MAC_UE_SUPPORTED;
+    int numUeSchedule = 1;//MAC_UE_SUPPORTED;
     for(int i=0; i<numUeSchedule; i++) {
         m_ueList[i]->schedule(m_sfn, m_sf, this);
     }

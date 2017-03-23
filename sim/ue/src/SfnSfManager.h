@@ -8,6 +8,8 @@
 #ifndef SFN_SF_MANAGER_H
 #define SFN_SF_MANAGER_H
 
+#ifdef OS_LINUX
+
 #include "Thread.h"
 #include "MutexLock.h"
 #include "UdpSocket.h"
@@ -53,5 +55,7 @@ namespace ue {
     }
 
 }
+
+#endif
 
 #endif

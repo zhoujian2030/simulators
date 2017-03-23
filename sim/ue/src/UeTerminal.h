@@ -257,7 +257,7 @@ namespace ue {
         BOOL isSRSent();
         BOOL processSRTimer();
 
-        SInt8 m_bsrTValue;
+        SInt16 m_bsrTValue;
         void startBSRTimer();
         void stopBSRTimer();
         BOOL isNonZeroBSRSent();

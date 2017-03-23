@@ -8,7 +8,11 @@
 #include <stddef.h>
 #include <stdio.h>
 #include "UeTerminal.h"
+#ifdef OS_LINUX
 #include "CLogger.h"
+#else
+#include "../sysService/common/logger.h"
+#endif
 #include "UeMacAPI.h"
 #include "UeScheduler.h"
 #include "StsCounter.h"
@@ -119,13 +123,13 @@ void UeTerminal::scheduleRach(UeScheduler* pUeScheduler) {
     LOG_DBG(UE_LOGGER_NAME, "[%s], %s\n",  __func__, m_uniqueId);
 
     if (!m_firstRachSfnSet) {
-        m_rachSfn = m_sfn + m_rachSfnDelay;
+        m_rachSfn = (m_sfn + m_rachSfnDelay) % 1024;
         m_firstRachSfnSet = TRUE;
     }
 
     if (m_state == IDLE && m_sf == m_rachSf) {
         if (!m_firstRachSent) {
-            if (m_sfn >= m_rachSfn) {
+            if (m_sfn == m_rachSfn) {
                 m_firstRachSent = TRUE;
                 m_rachSfn = m_sfn;
             } else {
@@ -1536,7 +1540,7 @@ void UeTerminal::setSfnSfForSR(BOOL isRetransmitSR) {
     // if m_srConfigIndex = 17, ul sf = 2, ul sfn = 0, 2, 4, 6, ...
     // if m_srConfigIndex = 72, ul sf = 7, ul sfn = 3, 7, 11, 15, ...
 
-    // refer to 36.213 Table 10.1.5-1
+    // refer to 36.213 Table 10.1-5
     LOG_WARN(UE_LOGGER_NAME, "[%s], %s, m_srConfigIndex = %d\n",  __func__, m_uniqueId, m_srConfigIndex);
 
     if (!isRetransmitSR) {

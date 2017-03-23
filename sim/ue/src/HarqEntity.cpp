@@ -7,7 +7,11 @@
 
 #include "HarqEntity.h"
 #include "UeTerminal.h"
+#ifdef OS_LINUX
 #include "CLogger.h"
+#else
+#include "../sysService/common/logger.h"
+#endif
 #include "StsCounter.h"
 
 using namespace ue;

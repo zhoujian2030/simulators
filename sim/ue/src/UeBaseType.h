@@ -8,6 +8,18 @@
 #ifndef UE_BASE_TYPE_H
 #define UE_BASE_TYPE_H
 
+#ifndef OS_LINUX
+#include "lteTypes.h"
+#define FAPI_API
+
+#define SOCKET_BUFFER_LENGTH 4096
+#define DL_PHY_DELAY 2
+#define UL_PHY_DELAY 1
+
+#define UE_LOGGER_NAME MODULE_ID_LAYER_MGR
+
+#else
+
 #define FAPI_API
 
 #define SOCKET_BUFFER_LENGTH 4096
@@ -35,5 +47,7 @@ typedef unsigned char BOOL;
 
 #define DL_PHY_DELAY 2
 #define UL_PHY_DELAY 1
+
+#endif
 
 #endif

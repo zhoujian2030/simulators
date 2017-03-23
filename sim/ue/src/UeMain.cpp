@@ -5,6 +5,8 @@
  *      Author: j.zhou
  */
 
+#ifdef OS_LINUX
+
 #include "UeService.h"
 #include "SfnSfManager.h"
 #include "StsCounter.h"
@@ -24,3 +26,5 @@ int main(int argc, char* argv[]) {
 
     return 0;
 }
+
+#endif

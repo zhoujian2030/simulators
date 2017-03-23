@@ -8,6 +8,8 @@
 #ifndef UE_SERVICE_H
 #define UE_SERVICE_H
 
+#ifdef OS_LINUX
+
 #include "Service.h"
 #include "EventIndicator.h"
 #include "UdpSocket.h"
@@ -42,5 +44,7 @@ namespace ue {
     }
 
 }
+
+#endif
 
 #endif

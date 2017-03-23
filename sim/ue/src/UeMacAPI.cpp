@@ -6,13 +6,35 @@
  */
 
 #include "UeMacAPI.h"
+#ifdef OS_LINUX
 #include "CLogger.h"
+#else
+#include "../sysService/common/logger.h"
+#include "../osAdapter/common/pktQueue.h"
+#endif
 #include "UeScheduler.h"
 #include "StsCounter.h"
 
 using namespace ue;
+#ifdef OS_LINUX
 using namespace cm;
 using namespace net;
+#endif
+
+#ifndef OS_LINUX
+extern "C" void* InitUePhyUeSim() {
+	UeMacAPI* pUeMacAPI = new UeMacAPI(0);
+	return (void*)pUeMacAPI;
+}
+
+extern "C" void HandleSubFrameInd(void* phyUeSim, UInt16 sfnsf) {
+	((UeMacAPI*)phyUeSim)->handleSubFrameInd(sfnsf);
+}
+
+extern "C" void HandleDlDataRequest(void* phyUeSim, UInt8* buffer, SInt32 length) {
+	((UeMacAPI*)phyUeSim)->handleDlDataRequest(buffer, length);
+}
+#endif
 
 // ----------------------------------------
 UeMacAPI::UeMacAPI(UInt8* theBuffer) 
@@ -26,10 +48,12 @@ UeMacAPI::UeMacAPI(UInt8* theBuffer)
     memset(m_harqBuffer, 0, SOCKET_BUFFER_LENGTH);
     memset(m_srBuffer, 0, SOCKET_BUFFER_LENGTH);
 
+#ifdef OS_LINUX
     m_l2Address.port = L2_SERVER_PORT;
     Socket::getSockaddrByIpAndPort(&m_l2Address.addr, L2_SERVER_IP, L2_SERVER_PORT);
 
     m_txL2Socket = new UdpSocket();
+#endif
 }
 
 // ----------------------------------------
@@ -37,6 +61,7 @@ UeMacAPI::~UeMacAPI() {
 
 }
 
+#ifdef OS_LINUX
 // ----------------------------------------
 void UeMacAPI::handleRecvResult(UdpSocket* theSocket, int numOfBytesRecved) {
     LOG_DBG(UE_LOGGER_NAME, "[%s], numOfBytesRecved = %d\n", __func__, numOfBytesRecved);
@@ -67,6 +92,29 @@ void UeMacAPI::handleRecvResult(UdpSocket* theSocket, int numOfBytesRecved) {
 }
 
 // ----------------------------------------
+void UeMacAPI::handleSendResult(UdpSocket* theSocket, int numOfBytesSent) {
+    LOG_DBG(UE_LOGGER_NAME, "handleSendResult()\n");
+}
+
+// ----------------------------------------
+void UeMacAPI::handleCloseResult(UdpSocket* theSocket) {
+    LOG_DBG(UE_LOGGER_NAME, "handleCloseResult()\n");
+}
+
+// ----------------------------------------
+void UeMacAPI::handleErrorResult(UdpSocket* theSocket) {
+    LOG_DBG(UE_LOGGER_NAME, "handleErrorResult()\n");
+}
+
+#else
+// ----------------------------------------
+void UeMacAPI::handleDlDataRequest(UInt8* theBuffer, SInt32 length) {
+	m_ueScheduler->processDlData(theBuffer, length);
+}
+
+#endif
+
+// ----------------------------------------
 void UeMacAPI::handleSubFrameInd(UInt16 sfnsf) {
     m_sfn = ( sfnsf & 0xFFF0) >> 4;
     m_sf  = sfnsf & 0x000F;
@@ -86,6 +134,7 @@ void UeMacAPI::handleSubFrameInd(UInt16 sfnsf) {
 
 // ----------------------------------------
 void UeMacAPI::sendData() {
+#ifdef OS_LINUX
     if (m_rachDataLength > 0) {
         LOG_DBG(UE_LOGGER_NAME, "[%s], send rach indication (%d): \n", __func__, m_rachDataLength);
         logBuff(m_rachBuffer, m_rachDataLength);
@@ -116,24 +165,39 @@ void UeMacAPI::sendData() {
         logBuff(m_srBuffer, m_srDataLength);
         m_txL2Socket->send((const char*)m_srBuffer, m_srDataLength, m_l2Address);
     }
+#else
+    //todo PHY_UE_CONFIG_RESPONSE sent to QMSS_TX_FREE_HAND_PHY_TO_LAYER2C_REPLY
+    if (m_rachDataLength > 0) {
+        LOG_DBG(UE_LOGGER_NAME, "send rach indication (%d): \n", m_rachDataLength);
+        LOG_BUFFER(m_rachBuffer, m_rachDataLength);
+        qmssSendMsg(QMSS_TX_FREE_HAND_PHY_TO_LAYER2D_DATAUP, QMSS_TX_HAND_PHY_TO_OTHER, (Int8*)m_rachBuffer, m_rachDataLength);
+    }
+
+    if (m_schDataLength > 0) {
+        memcpy((void*)(m_schBuffer + m_schDataLength - m_schPduLength), (void*)m_schPduBuffer, m_schPduLength);
+        LOG_DBG(UE_LOGGER_NAME, "send sch indication (%d): \n", m_schDataLength);
+        qmssSendMsg(QMSS_TX_FREE_HAND_PHY_TO_LAYER2D_DATAUP, QMSS_TX_HAND_PHY_TO_OTHER, (Int8*)m_schBuffer, m_schDataLength);
+    }
+
+    if (m_crcDataLength > 0) {
+        LOG_DBG(UE_LOGGER_NAME, "send crc indication (%d): \n", m_crcDataLength);
+        LOG_BUFFER(m_crcBuffer, m_crcDataLength);
+        qmssSendMsg(QMSS_TX_FREE_HAND_PHY_TO_LAYER2D_DATAUP, QMSS_TX_HAND_PHY_TO_OTHER, (Int8*)m_crcBuffer, m_crcDataLength);
+    }
+
+    if (m_harqDataLength > 0) {
+        LOG_DBG(UE_LOGGER_NAME, "send harq indication (%d): \n", m_harqDataLength);
+        LOG_BUFFER(m_harqBuffer, m_harqDataLength);
+        qmssSendMsg(QMSS_TX_FREE_HAND_PHY_TO_LAYER2D_DATAUP, QMSS_TX_HAND_PHY_TO_OTHER, (Int8*)m_harqBuffer, m_harqDataLength);
+    }
+
+    if (m_srDataLength > 0) {
+        LOG_DBG(UE_LOGGER_NAME, "send SR indication (%d): \n", m_srDataLength);
+        LOG_BUFFER(m_srBuffer, m_srDataLength);
+        qmssSendMsg(QMSS_TX_FREE_HAND_PHY_TO_LAYER2D_DATAUP, QMSS_TX_HAND_PHY_TO_OTHER, (Int8*)m_srBuffer, m_srDataLength);
+    }
+#endif
 }
-
-// ----------------------------------------
-void UeMacAPI::handleSendResult(UdpSocket* theSocket, int numOfBytesSent) {
-    LOG_DBG(UE_LOGGER_NAME, "[%s], handleSendResult()\n", __func__);
-}
-
-// ----------------------------------------
-void UeMacAPI::handleCloseResult(UdpSocket* theSocket) {
-    LOG_DBG(UE_LOGGER_NAME, "[%s], handleCloseResult()\n", __func__);
-}
-
-// ----------------------------------------
-void UeMacAPI::handleErrorResult(UdpSocket* theSocket) {
-    LOG_DBG(UE_LOGGER_NAME, "[%s], handleErrorResult()\n", __func__);
-}
-
-
 
 // ------------------------------------
 void UeMacAPI::resetSendBuffer() {

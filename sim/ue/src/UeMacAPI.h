@@ -8,35 +8,47 @@
 #ifndef UE_MAC_API
 #define UE_MAC_API
 
+#ifdef OS_LINUX
 #include "UdpSocketListener.h"
 #include "UdpSocket.h"
+#endif
+
 #include "FapiInterface.h"
 #include <string.h>
 
+#ifdef OS_LINUX
 #define L2_SERVER_IP "192.168.64.140"
 #define L2_SERVER_PORT 8888
 
 #define UE_SERVER_IP "192.168.64.137"
 #define UE_SERVER_PORT 9999
+#endif
 
 namespace ue {
 
     class UeScheduler;
 
+#ifdef OS_LINUX
     class UeMacAPI : public net::UdpSocketListener {
+#else
+	class UeMacAPI {
+#endif
     public:
         UeMacAPI(UInt8* theBuffer);
         virtual ~UeMacAPI();
 
+#ifdef OS_LINUX
         virtual void handleRecvResult(net::UdpSocket* theSocket, int numOfBytesRecved);
         virtual void handleSendResult(net::UdpSocket* theSocket, int numOfBytesSent);
         virtual void handleCloseResult(net::UdpSocket* theSocket);
         virtual void handleErrorResult(net::UdpSocket* theSocket);
-
+#else
+        void handleDlDataRequest(UInt8* theBuffer, SInt32 length);
+#endif
+        void handleSubFrameInd(UInt16 sfnsf);
         void sendData();
 
     private:
-        void handleSubFrameInd(UInt16 sfnsf);
 
         friend class UeTerminal;
 
@@ -81,8 +93,10 @@ namespace ue {
         UInt16 m_schPduLength;
         UInt8 m_schPduBuffer[SOCKET_BUFFER_LENGTH];
 
+#ifdef OS_LINUX
         net::Socket::InetAddressPort m_l2Address;
         net::UdpSocket* m_txL2Socket;
+#endif
     };
 
     // ------------------------------------

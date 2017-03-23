@@ -12,7 +12,7 @@
 #include <map>
 #include <vector>
 
-#define MAC_UE_SUPPORTED 50
+#define MAC_UE_SUPPORTED 32
 #define DL_MSG_CONTAINER_SIZE 4 * 4
 
 namespace ue {

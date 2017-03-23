@@ -6,7 +6,11 @@
  */
 
 #include "StsCounter.h"
+#ifdef OS_LINUX
 #include "CLogger.h"
+#else
+#include "../sysService/common/logger.h"
+#endif
 
 using namespace ue;
 

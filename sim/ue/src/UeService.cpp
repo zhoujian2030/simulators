@@ -5,6 +5,8 @@
  *      Author: j.zhou
  */
 
+#ifdef OS_LINUX
+
 #include "UeService.h"
 #include <iostream>
 #include "CLogger.h"
@@ -72,3 +74,5 @@ unsigned long UeService::run() {
 
     return 0;
 }
+
+#endif

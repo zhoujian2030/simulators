@@ -17,7 +17,7 @@ using namespace std;
 RlcLayer::RlcLayer(UeTerminal* ue, PdcpLayer* pdcpLayer) 
 : m_ue(ue), m_pdcpLayer(pdcpLayer)
 {
-    m_nodePool = new NodePool(MAC_RLC_AMD_SDU_SEG_NUM);
+    m_nodePool = new NodePool(MAX_RLC_AMD_SDU_SEG_NUM);
     m_firstSeg = 0;
 
     m_rrcSetupConfig.tPollRetransmit = 80;

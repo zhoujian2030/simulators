@@ -9,7 +9,11 @@
 #define RLC_LAYER_H
 
 #include "UeBaseType.h"
+#ifdef OS_LINUX
 #include "CLogger.h"
+#else
+#include "../sysService/common/logger.h"
+#endif
 
 namespace ue {
 
@@ -50,8 +54,8 @@ namespace ue {
         };
         
         enum {
-            MAX_RLC_AMD_SDU_SEG_LENGTH = 1024,
-            MAC_RLC_AMD_SDU_SEG_NUM = 1024
+            MAX_RLC_AMD_SDU_SEG_LENGTH = 512, //1024,
+            MAX_RLC_AMD_SDU_SEG_NUM = 8 //1024
         };
 
         struct Node {

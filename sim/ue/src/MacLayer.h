@@ -9,7 +9,11 @@
 #define MAC_LAYER_H
 
 #include "UeBaseType.h"
+#ifdef OS_LINUX
 #include "CLogger.h"
+#else
+#include "../sysService/common/logger.h"
+#endif
 
 namespace ue {
 
