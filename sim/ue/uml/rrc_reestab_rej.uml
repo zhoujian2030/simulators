@@ -1,0 +1,55 @@
+@startuml
+autonumber
+title UE sends RRC Reestablishment Reject
+
+participant "UE" as ue
+participant "PHY Adapter" as phy
+participant "L2" as l2
+participant "L3" as l3
+
+note over ue, l2
+UE sends MSG1
+end note
+
+ue -> l2 : [**202.1**] RACH, RA-RNTI, preamble
+
+note over ue, l2
+L2 sends MSG2 with 2 TTI advance to PHY
+end note
+
+l2 -> phy : [**202.3**] FAPI_DL_DCI_FORMAT_1A & FAPI_DLSCH_PDU, RA-RNTI
+l2 -> ue : [**202.5**] RAR, TC-RNTI
+
+note over ue, l2
+UE sends RRC Reestablishment Request in the 2nd UL SF after RAR received
+end note
+l2 -> phy : [**203.1**] FAPI_ULSCH (1 TTI advance)
+ue -> l2 : [**203.2**] MSG3 (RRC Reestablishment Request), TC-RNTI
+phy -> l2 : [**203.2**] MSG3 CRC (0: Correct)
+
+note over ue, l2
+L2 sends MSG4
+end note
+l2 -> phy : [**203.6**] FAPI_DL_DCI_FORMAT_1A & FAPI_DLSCH_PDU, TC-RNTI
+l2 -> ue : [**203.8**] Contention Resolution, TC-RNTI
+l2 --> phy : [**204.1**] FAPI_UCI_HARQ (Cfg PHY to recv HARQ)
+ue -> l2 : [**204.2**] HARQ ACK
+
+note over ue, l3
+L3 sends RRC Reestablishment Reject for  RRC Reestablishment Request
+end note
+
+l2 -> l3 : RRC Reestablishment Request
+... 
+
+l3 -> l2 : RRC Reestablishment Reject
+
+l2 -> phy : [**204.7**] FAPI_DL_DCI_FORMAT_1A & FAPI_DLSCH_PDU
+l2 -> ue : [**204.9**] RRC Reestablishment Reject, C-RNTI
+l2 --> phy : [**205.6**] FAPI_UCI_HARQ
+ue -> l2 : [**205.7**] HARQ ACK (for  RRC Reestablishment Reject)
+
+ue -> ue: free resource
+
+
+@enduml

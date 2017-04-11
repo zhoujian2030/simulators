@@ -1,0 +1,47 @@
+@startuml
+autonumber
+
+actor "User" as user
+participant "UeScheduler" as ues
+participant "UeTerminal" as uet
+participant "HarqEntity" as he
+participant "UlHarqProcess" as ulhp
+
+user --> ues : FAPI_DCI_UL_PDU
+ues -> uet ++ : handleDci0Pdu
+    uet -> he ++ : allocateUlHarqProcess
+        he -> uet ++ : allocateUlHarqCallback
+        return
+        he -> ulhp ++ : prepareSending            
+        return
+    return
+return
+
+
+
+ues -> uet ++ : schedule
+    uet -> uet ++ : scheduleDCCH
+        uet -> he ++ : send
+            he -> ulhp ++ : send
+                ulhp -> uet ++ : ulHarqSendCallback
+                    uet --> user : send ULSCH data
+                return
+                ulhp -> ulhp : startTimer()
+            return
+        return
+    return
+return 
+
+user --> ues : FAPI_HI_PDU
+ues -> uet ++ : handleHIPdu
+    uet -> he ++ : handleAckNack
+        he -> ulhp ++ : handleAckNack
+            ulhp -> ulhp : stopTimer
+            ulhp -> uet ++ : ulHarqResultCallback
+            return
+        return
+    return
+return
+
+
+@enduml

@@ -1,0 +1,82 @@
+@startuml
+autonumber
+title MAC allocate 4 RB for SR, normal basic flow, 2nd part
+
+participant "UE" as ue
+participant "PHY Adapterer" as phy
+participant "L2" as l2
+participant "L3" as l3
+
+... continue ...
+
+note over ue, l3
+MAC schedules Identity Request when receives msg from RRC.
+UE send SR to request ul resource for sending identity response
+end note
+
+l3 -> l2 : Identity Request
+
+l2 -> phy : [**708.1**] FAPI_DL_DCI_FORMAT_1A & FAPI_DLSCH_PDU
+l2 -> ue : [**708.3**] Identity Request
+l2 --> phy : [**708.6**] FAPI_UCI_HARQ
+ue -> l2 : [**708.7**] HARQ ACK (for Identity Request)
+
+l2 -> ue : [**710.1**] FAPI_UCI_SR
+ue -> l2 : [**710.2**] SR
+l2 -> ue : [**710.8**] FAPI_UL_DCI_FORMAT_0 (4 RB)
+l2 -> phy : [**711.1**] FAPI_ULSCH
+ue -> l2 : [**711.2**] Identity Response & RLC ACK for Identity Request
+phy -> l2 : [**711.2**] CRC (0: Correct)
+
+l2 -> l3 : Identity Response
+
+l2 -> phy : [**711.4**] FAPI_DL_DCI_FORMAT_1A
+l2 -> phy : [**711.4**] FAPI_DLSCH_PDU
+l2 -> ue : [**711.6**] RLC ACK for Identity Response
+l2 -> ue : [**711.8**] FAPI_HI_PDU (HARQ ACK for Identity Response)
+l2 --> phy : [**712.1**] FAPI_UCI_HARQ
+ue --> l2 : [**712.2**] HARQ ACK for RLC ACK received in 711.6
+
+
+note over ue, l3
+Network sends Attach Reject & RRC Release after Identity Responose received
+end note
+
+l3 -> l2 : Attach Reject 
+l3 -> l2 : RRC Release
+
+l2 -> phy : [**712.4**] FAPI_DL_DCI_FORMAT_1A & FAPI_DLSCH_PDU
+l2 -> ue : [**712.6**] Attach Reject
+
+l2 -> phy : [**712.6**] FAPI_DL_DCI_FORMAT_1A & FAPI_DLSCH_PDU
+l2 -> ue : [**712.8**] RRC Release
+
+l2 --> phy : [**713.1**] FAPI_UCI_HARQ
+ue -> l2 : [**713.2**] HARQ ACK (for both attach reject and rrc release)
+
+l2 -> ue : [**714.1**] FAPI_UCI_SR
+ue -> l2 : [**714.2**] SR
+l2 -> ue : [**714.8**] FAPI_UL_DCI_FORMAT_0 (4 RB)
+l2 -> phy : [**715.1**] FAPI_ULSCH
+ue -> l2 : [**715.2**] RLC ACK for Identity Request & RRC Release
+phy -> l2 : [**715.2**] CRC (0: Correct)
+
+note over ue, l3
+Network delete ue context.
+end note
+
+l3 -> l2 : Delete UE Context (PDCP/RLC/MAC/PHY)
+
+l2 -> phy : PHY_UE_CONFIG_REQUEST (cfgMode = 3)
+phy -> l2 : PHY_UE_CONFIG_RESPONSE
+phy -> ue : free resource
+
+note over ue
+Terminate the connection, 
+reset state to idle, prepare
+next RACH indication 
+end note
+
+ue -> l2 : [xxx.1] RACH, RA-RNTI, preamble
+
+@enduml

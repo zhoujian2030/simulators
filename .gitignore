@@ -31,6 +31,7 @@
 
 # others
 .vscode
+ *.png
 
 inc
 obj

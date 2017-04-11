@@ -1,0 +1,26 @@
+@startuml
+
+class UeScheduler {
+    void schedule()
+}
+class UeTerminal {
+    BOOL schedule()
+}
+
+UeScheduler "1" o-- "64" UeTerminal
+
+
+UENotSendRlcAck -|> UeTerminal
+NWRetransmitIdentityReq -|> UeTerminal
+UeTerminal <|- UENotSentRrcSetupComplete
+UeTerminal <|- UESuspending
+
+UeTerminal *-- PdcpLayer
+UeTerminal *-- RlcLayer
+UeTerminal -down-> PhyMacAPI
+UeTerminal *-- RrcLayer
+UeTerminal *-- HarqEntity
+HarqEntity "1" *-- "n" UlHarqProcess
+HarqEntity "1" *-- "n" DlHarqProcess
+
+@enduml

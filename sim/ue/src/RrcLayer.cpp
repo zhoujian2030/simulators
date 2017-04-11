@@ -29,12 +29,11 @@ RrcLayer::~RrcLayer() {
 
 // -------------------------------------
 void RrcLayer::handleRxRRCMessage(UInt8* buffer, UInt32 length) {    
-    LOG_DBG(UE_LOGGER_NAME, "[%s], length = %d\n", __func__, length);
+	LOG_DBG(UE_LOGGER_NAME, "[%s], length = %d\n", __func__, length);
 
-    for (UInt16 j=0; j<length; j++) {
-        printf("%02x ", buffer[j]);
-    }
-    printf("\n"); 
+#ifdef OS_LINUX
+    LOG_BUFFER(buffer, length);
+#endif
 
     RrcMsg rrcMsg;
     UInt32 msgType = decode(buffer, length, &rrcMsg);   
@@ -69,7 +68,7 @@ UInt32 RrcLayer::decode(UInt8* buffer, UInt32 length, RrcMsg* rrcMsg) {
     UInt32 idx = 0; 
     UInt8 rrcMsgType = buffer[idx] >> 3;  // 0a
     if (rrcMsgType == 0x01) {
-        LOG_DBG(UE_LOGGER_NAME, "[%s], Recv DL DT message\n", __func__);
+    	LOG_DBG(UE_LOGGER_NAME, "[%s], Recv DL DT message\n", __func__);
 
         UInt8 criticalExt = buffer[idx++] & 0x01;  // 0a
         if (criticalExt == 0) {
@@ -78,7 +77,7 @@ UInt32 RrcLayer::decode(UInt8* buffer, UInt32 length, RrcMsg* rrcMsg) {
             // parse from 3rd byte, 18 3a a8 08 00
             UInt8 firstByte = buffer[idx++];
             UInt8 secHeaderType = ((firstByte & 0x07) << 1) | (buffer[idx] >> 7);  // 18 3a
-            LOG_DBG(UE_LOGGER_NAME, "[%s], buffer[%d] = %02x\n", __func__, idx, buffer[idx]);
+//            LOG_DBG(UE_LOGGER_NAME, "[%s], buffer[%d] = %02x\n", __func__, idx, buffer[idx]);
             if (secHeaderType == 0x00) {
                 // not security protected
                 UInt8 protocolDiscriminator = (buffer[idx] >> 3) & 0x0f;  // 3a
@@ -101,7 +100,7 @@ UInt32 RrcLayer::decode(UInt8* buffer, UInt32 length, RrcMsg* rrcMsg) {
 
                         default:
                         {
-                            LOG_DBG(UE_LOGGER_NAME, "[%s], other NAS message: 0x%02x\n", __func__, nasMsgType);
+                            LOG_INFO(UE_LOGGER_NAME, "[%s], other NAS message: 0x%02x\n", __func__, nasMsgType);
                             break;
                         }
                     }
@@ -109,10 +108,10 @@ UInt32 RrcLayer::decode(UInt8* buffer, UInt32 length, RrcMsg* rrcMsg) {
             }
         }
     } else if (rrcMsgType == 0x05) {
-        LOG_DBG(UE_LOGGER_NAME, "[%s], Recv RRC Release message\n", __func__);
+    	LOG_DBG(UE_LOGGER_NAME, "[%s], Recv RRC Release message\n", __func__);
         msgType = RRC_RELEASE;
     } else {
-        LOG_DBG(UE_LOGGER_NAME, "[%s], other message: 0x%02x\n", __func__, rrcMsgType);
+    	LOG_INFO(UE_LOGGER_NAME, "[%s], other message: 0x%02x\n", __func__, rrcMsgType);
     }
 
     return msgType;

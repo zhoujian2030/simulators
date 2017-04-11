@@ -39,7 +39,7 @@ RlcLayer::~RlcLayer() {
 
 // -------------------------------------
 void RlcLayer::reset() { 
-    LOG_DBG(UE_LOGGER_NAME, "[%s], Entry\n", __func__);
+    LOG_TRACE(UE_LOGGER_NAME, "[%s], Entry\n", __func__);
     m_sn = 1;
     m_numSegRecvd = 0;
     freeAllSegments();
@@ -48,12 +48,11 @@ void RlcLayer::reset() {
 
 // -------------------------------------
 void RlcLayer::handleRxAMDPdu(UInt8* buffer, UInt32 length) {    
-    LOG_DBG(UE_LOGGER_NAME, "[%s], length = %d\n", __func__, length);
+	LOG_DBG(UE_LOGGER_NAME, "[%s], length = %d\n", __func__, length);
 
-    for (UInt16 j=0; j<length; j++) {
-        printf("%02x ", buffer[j]);
-    }
-    printf("\n"); 
+#ifdef OS_LINUX
+    LOG_BUFFER(buffer, length); 
+#endif
 
     UInt32 idx = 0;
     m_amdHeader.dc = (buffer[idx] >> 7) & 0x01;
@@ -82,14 +81,14 @@ void RlcLayer::handleRxAMDPdu(UInt8* buffer, UInt32 length) {
                                | (buffer[idx + 3] & 0xFFU )); //abhishek
         }
 
-        LOG_DBG(UE_LOGGER_NAME, "[%s], dc = %d\n", __func__, m_amdHeader.dc);
-        LOG_DBG(UE_LOGGER_NAME, "[%s], rf = %d\n", __func__, m_amdHeader.rf);
-        LOG_DBG(UE_LOGGER_NAME, "[%s], p = %d\n", __func__, m_amdHeader.p);
-        LOG_DBG(UE_LOGGER_NAME, "[%s], fi = %d\n", __func__, m_amdHeader.fi);
-        LOG_DBG(UE_LOGGER_NAME, "[%s], e = %d\n", __func__, m_amdHeader.e);
-        LOG_DBG(UE_LOGGER_NAME, "[%s], sn = %d\n", __func__, m_amdHeader.sn);
-        LOG_DBG(UE_LOGGER_NAME, "[%s], lsf = %d\n", __func__, m_amdHeader.lsf);
-        LOG_DBG(UE_LOGGER_NAME, "[%s], so = %d\n", __func__, m_amdHeader.so);
+//        LOG_DBG(UE_LOGGER_NAME, "[%s], dc = %d\n", __func__, m_amdHeader.dc);
+//        LOG_DBG(UE_LOGGER_NAME, "[%s], rf = %d\n", __func__, m_amdHeader.rf);
+//        LOG_DBG(UE_LOGGER_NAME, "[%s], p = %d\n", __func__, m_amdHeader.p);
+//        LOG_DBG(UE_LOGGER_NAME, "[%s], fi = %d\n", __func__, m_amdHeader.fi);
+//        LOG_DBG(UE_LOGGER_NAME, "[%s], e = %d\n", __func__, m_amdHeader.e);
+//        LOG_DBG(UE_LOGGER_NAME, "[%s], sn = %d\n", __func__, m_amdHeader.sn);
+//        LOG_DBG(UE_LOGGER_NAME, "[%s], lsf = %d\n", __func__, m_amdHeader.lsf);
+//        LOG_DBG(UE_LOGGER_NAME, "[%s], so = %d\n", __func__, m_amdHeader.so);
 
         reassembleAMDPdu(&m_amdHeader, &buffer[2], length-2);
     }     
@@ -108,11 +107,11 @@ void RlcLayer::buildRlcAMDHeader(UInt8* buffer, UInt32& length) {
 
 // -------------------------------------
 void RlcLayer::reassembleAMDPdu(AmdHeader* header, UInt8* buffer, UInt32 length) {
-    LOG_DBG(UE_LOGGER_NAME, "[%s], fi = %d, sn = %d, p = %d, e = %d, length = %d\n", __func__, 
+    LOG_TRACE(UE_LOGGER_NAME, "[%s], fi = %d, sn = %d, p = %d, e = %d, length = %d\n", __func__,
         header->fi, header->sn, header->p, header->e, length);
     
     if (header->fi == FI_00_SINGLE_SEG) {
-        LOG_DBG(UE_LOGGER_NAME, "[%s], receive a single SDU with only one segment\n", __func__);
+    	LOG_DBG(UE_LOGGER_NAME, "[%s], receive a single SDU with only one segment\n", __func__);
         if (header->e) {
             UInt32 sduLength = 0;
             handleExtField(sduLength, buffer, length);
@@ -123,7 +122,7 @@ void RlcLayer::reassembleAMDPdu(AmdHeader* header, UInt8* buffer, UInt32 length)
             m_pdcpLayer->handleRxSrb(buffer, length);
         }
     } else if (header->fi == FI_01_FIRST_SEG) {
-        LOG_DBG(UE_LOGGER_NAME, "[%s], receive the first segment\n", __func__);
+    	LOG_DBG(UE_LOGGER_NAME, "[%s], receive the first segment\n", __func__);
         if (length > MAX_RLC_AMD_SDU_SEG_LENGTH) {            
             LOG_ERROR(UE_LOGGER_NAME, "[%s], length exceeds max defined value %d\n", __func__, MAX_RLC_AMD_SDU_SEG_LENGTH);
             return;
@@ -141,7 +140,7 @@ void RlcLayer::reassembleAMDPdu(AmdHeader* header, UInt8* buffer, UInt32 length)
         m_firstSeg->prev = m_firstSeg;
         m_numSegRecvd = 1;
     } else if (header->fi == FI_02_LAST_SEG) {
-        LOG_DBG(UE_LOGGER_NAME, "[%s], receive the last segment\n", __func__);
+    	LOG_DBG(UE_LOGGER_NAME, "[%s], receive the last segment\n", __func__);
 
         if (m_firstSeg == 0) {
             LOG_ERROR(UE_LOGGER_NAME, "[%s], invalid segment, drop it\n", __func__);
@@ -186,7 +185,7 @@ void RlcLayer::reassembleAMDPdu(AmdHeader* header, UInt8* buffer, UInt32 length)
             }            
             
             if (m_firstSeg->next == m_firstSeg) {
-                LOG_DBG(UE_LOGGER_NAME, "[%s], last segment!\n", __func__);
+            	LOG_INFO(UE_LOGGER_NAME, "[%s], last segment!\n", __func__);
                 if (sduLength > 0) {
                     m_pdcpLayer->handleRxSrb(m_rlcSdu, sduLength);
                 }
@@ -202,7 +201,7 @@ void RlcLayer::reassembleAMDPdu(AmdHeader* header, UInt8* buffer, UInt32 length)
             m_nodePool->freeNode(node);
         }
     } else {
-        LOG_DBG(UE_LOGGER_NAME, "[%s], receive the middle segment, TODO\n", __func__);
+    	LOG_INFO(UE_LOGGER_NAME, "[%s], receive the middle segment, TODO\n", __func__);
         // middle segment received, need to assemble
         // TODO
     }
@@ -213,6 +212,7 @@ void RlcLayer::reassembleAMDPdu(AmdHeader* header, UInt8* buffer, UInt32 length)
         UInt16 ackSn = (header->sn + 1)%1024;
         statusPdu[0] = (ackSn >> 6) & 0x0f;
         statusPdu[1] = (ackSn & 0x3f) << 2;
+        LOG_INFO(UE_LOGGER_NAME, "[%s], need to send RLC ACK later, ackSn = %d\n", __func__, ackSn);
         m_ue->rlcCallback(statusPdu, 2);
 
         // TODO support E1 = 1
@@ -221,7 +221,7 @@ void RlcLayer::reassembleAMDPdu(AmdHeader* header, UInt8* buffer, UInt32 length)
 
 // -------------------------------------
 void RlcLayer::handleExtField(UInt32& sduLength, UInt8* buffer, UInt32 length) {    
-    LOG_DBG(UE_LOGGER_NAME, "[%s], sduLength = %d, length = %d\n", __func__, sduLength, length);
+    LOG_TRACE(UE_LOGGER_NAME, "[%s], sduLength = %d, length = %d\n", __func__, sduLength, length);
     UInt8 idx = 0;
     UInt8 e = 0;
     UInt16 li = 0;

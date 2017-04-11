@@ -9,24 +9,86 @@
 
 #include "UeScheduler.h"
 #include "UeTerminal.h"
-#include "UeMacAPI.h"
+#include "PhyMacAPI.h"
+#include "StsCounter.h"
 #ifdef OS_LINUX
 #include "CLogger.h"
 #else
 #include "../sysService/common/logger.h"
 #endif
 
+#include "NWRetransmitRrcSetup.h"
+#include "UENotSendRrcSetupComplete.h"
+#include "NWRetransmitIdentityReq.h"
+#include "UESuspending.h"
+#include "UENotSendRlcAck.h"
+#include "UESendRrcReestablishmentReq.h"
+
 using namespace ue;
 using namespace std;
 
 // ----------------------------------------
-UeScheduler::UeScheduler(UeMacAPI* ueMacAPI) 
+NodePool::NodePool(UInt32 size) {
+    m_head = new Node();
+    if (size > 0) {
+        size--;
+    }
+
+    LOG_TRACE(UE_LOGGER_NAME, "[%s], m_head = %p\n", __func__, m_head);
+
+    Node* node = 0;
+    while (size--) {
+        node = new Node();
+        if (node == 0) {
+        	LOG_DBG(UE_LOGGER_NAME, "[%s], fail to create new node, size = %d\n", __func__, size);
+        	break;
+        }
+        node->next = m_head;
+        m_head = node;
+    }
+}
+
+// ----------------------------------------
+NodePool::~NodePool() {
+
+}
+
+// ----------------------------------------
+Node* NodePool::getNode() {
+	Node* retNode = m_head;
+	LOG_TRACE(UE_LOGGER_NAME, "[%s], retNode = %p\n", __func__, retNode);
+	if (m_head != 0) {
+		m_head = m_head->next;
+		retNode->next = 0;
+		retNode->tail = 0;
+	}
+	return retNode;
+}
+
+// ----------------------------------------
+void NodePool::freeNode(Node* node) {
+	if (node != 0) {
+		node->next = m_head;
+		m_head = node;
+	}
+}
+
+// ----------------------------------------
+UeScheduler::UeScheduler(PhyMacAPI* phyMacAPI, StsCounter* stsCounter)
 : m_sfn(0), m_sf(0)
 {
-    // The ueId and ra-rnti value is in range 1~MAC_UE_SUPPORTED
-    m_ueList = new UeTerminal*[MAC_UE_SUPPORTED];
-    for (UInt32 i=0; i<MAC_UE_SUPPORTED; i++) {
-        m_ueList[i] = new UeTerminal(i+1, i+1, ueMacAPI);
+	LOG_TRACE(UE_LOGGER_NAME, "[%s], Entry\n", __func__);
+
+    // The ueId and ra-rnti value is in range 1~MAX_UE_SUPPORTED
+    m_ueList = new UeTerminal*[MAX_UE_SUPPORTED];
+    for (UInt32 i=0; i<MAX_UE_SUPPORTED; i++) {
+        m_ueList[i] = new UeTerminal(i+1, i+1, phyMacAPI, stsCounter);
+//    	m_ueList[i] = new NWRetransmitRrcSetup(i+1, i+1, phyMacAPI, stsCounter);
+//        m_ueList[i] = new UENotSendRrcSetupComplete(i+1, i+1, phyMacAPI, stsCounter);
+//        m_ueList[i] = new NWRetransmitIdentityReq(i+1, i+1, phyMacAPI, stsCounter);
+//        m_ueList[i] = new UESuspending(i+1, i+1, phyMacAPI, stsCounter);
+//        m_ueList[i] = new UENotSendRlcAck(i+1, i+1, phyMacAPI, stsCounter);
+//		m_ueList[i] = new UESendRrcReestablishmentReq(i+1, i+1, phyMacAPI, stsCounter);
     }
 
     for (UInt32 i=0; i<DL_MSG_CONTAINER_SIZE; i++) {
@@ -35,6 +97,10 @@ UeScheduler::UeScheduler(UeMacAPI* ueMacAPI)
     m_ulCfgMsg.length = 0;
 
     m_nodePool = new NodePool(DL_MSG_CONTAINER_SIZE);
+    m_dlDataNodeHead = 0;
+    m_dlConfigNodeHead = 0;
+    m_ueConfigNodeHead = 0;
+    m_hiDci0NodeHead = 0;
 }
 
 // ----------------------------------------
@@ -44,6 +110,15 @@ UeScheduler::~UeScheduler() {
 
 // ----------------------------------------
 void UeScheduler::updateSfnSf(UInt16 sfn, UInt8 sf) {
+	m_prevSfn = m_sfn;
+	m_prevSf = m_sf;
+
+	UInt8 expectedSf = (m_sf + 1) % 10;
+	UInt16 expectedSfn = (m_sfn + (m_sf + 1) / 10) % 1024;
+	if ((expectedSf != sf) || (expectedSfn != sfn)) {
+		LOG_ERROR(UE_LOGGER_NAME, "[%s], sfnsf not consecutive!\n", __func__);
+	}
+
     m_sfn = sfn;
     m_sf  = sf;
 }
@@ -51,7 +126,7 @@ void UeScheduler::updateSfnSf(UInt16 sfn, UInt8 sf) {
 // ----------------------------------------
 #define GENERATE_SUBFRAME_SFNSF(sfn,sf) ( ( (sfn) << 4) | ( (sf) & 0xf) )
 void UeScheduler::processDlData(UInt8* buffer, SInt32 length) {
-    LOG_DBG(UE_LOGGER_NAME, "[%s], Entry \n", __func__);
+    LOG_TRACE(UE_LOGGER_NAME, "[%s], Entry \n", __func__);
 
     FAPI_l1ApiMsg_st *pL1Api = (FAPI_l1ApiMsg_st *)buffer;
 
@@ -60,43 +135,422 @@ void UeScheduler::processDlData(UInt8* buffer, SInt32 length) {
         m_ulCfgMsg.length = length;
         LOG_DBG(UE_LOGGER_NAME, "[%s], save PHY_UL_CONFIG_REQUEST, in %d.%d\n", __func__, m_sfn, m_sf);
     } else {
-        if (pL1Api->msgId == PHY_DELETE_UE_REQUEST) {
-            UInt16* pSfnSf = (UInt16*)&pL1Api->msgBody[0];
-            UInt8 sf = (m_sf + 2) % 10;
-            UInt16 sfn = (m_sfn + (m_sf + 2)/10) % 1024;
-            *pSfnSf = GENERATE_SUBFRAME_SFNSF(sfn, sf);
-            LOG_DBG(UE_LOGGER_NAME, "[%s], recv PHY_DELETE_UE_REQUEST in %d.%d, will handle it in %d.%d\n", __func__, m_sfn, m_sf, sfn, sf);
-        }
+        static UInt16 historyNodes = 0;
 
         Node* node = m_nodePool->getNode();
         if (node == 0) {
-            LOG_ERROR(UE_LOGGER_NAME, "[%s], Fail to get free node\n", __func__);
+            LOG_ERROR(UE_LOGGER_NAME, "[%s], Fail to get free node, historyNodes = %d\n", __func__, historyNodes);
             return;
         }
+
+        historyNodes++;
+        BOOL foundFreeBuffer = FALSE;
         for (UInt32 i=0; i<DL_MSG_CONTAINER_SIZE; i++) {
+
             if (m_dlMsgBufferContainer[i].length == 0) {
                 node->buffer = (void*)&m_dlMsgBufferContainer[i];
                 memcpy(m_dlMsgBufferContainer[i].data, buffer, length);
                 m_dlMsgBufferContainer[i].length = length;
 
-                if (m_head == 0) {
-                    m_head = node;
-                    m_head->tail = node;
-                } else {
-                    m_head->tail->next = node;
-                    m_head->tail = node;
+                foundFreeBuffer = TRUE;
+
+                switch (pL1Api->msgId) {
+					case PHY_DL_CONFIG_REQUEST:
+					{
+						if (m_dlConfigNodeHead == 0) {
+							m_dlConfigNodeHead = node;
+							m_dlConfigNodeHead->tail = node;
+						} else {
+							m_dlConfigNodeHead->tail->next = node;
+							m_dlConfigNodeHead->tail = node;
+						}
+						break;
+					}
+
+					case PHY_DL_TX_REQUEST:
+					{
+						if (m_dlDataNodeHead == 0) {
+							m_dlDataNodeHead = node;
+							m_dlDataNodeHead->tail = node;
+						} else {
+							m_dlDataNodeHead->tail->next = node;
+							m_dlDataNodeHead->tail = node;
+						}
+						break;
+					}
+
+					case PHY_DL_HI_DCI0_REQUEST:
+					{
+						if (m_hiDci0NodeHead == 0) {
+							m_hiDci0NodeHead = node;
+							m_hiDci0NodeHead->tail = node;
+						} else {
+							m_hiDci0NodeHead->tail->next = node;
+							m_hiDci0NodeHead->tail = node;
+						}
+						break;
+					}
+
+#ifdef OS_LINUX
+					case PHY_DELETE_UE_REQUEST:
+					{
+				        if (pL1Api->msgId == PHY_DELETE_UE_REQUEST) {
+				            UInt16* pSfnSf = (UInt16*)&pL1Api->msgBody[0];
+				            UInt8 sf = (m_sf + 2) % 10;
+				            UInt16 sfn = (m_sfn + (m_sf + 2)/10) % 1024;
+				            *pSfnSf = GENERATE_SUBFRAME_SFNSF(sfn, sf);
+				            LOG_DBG(UE_LOGGER_NAME, "[%s], recv PHY_DELETE_UE_REQUEST in %d.%d, will handle it in %d.%d\n", __func__, m_sfn, m_sf, sfn, sf);
+				        }
+#else
+					case PHY_UE_CONFIG_REQUEST:
+					{
+#endif
+						if (m_ueConfigNodeHead == 0) {
+							m_ueConfigNodeHead = node;
+							m_ueConfigNodeHead->tail = node;
+						} else {
+							m_ueConfigNodeHead->tail->next = node;
+							m_ueConfigNodeHead->tail = node;
+						}
+						break;
+					}
+
+					default:
+					{
+						LOG_ERROR(UE_LOGGER_NAME, "[%s], unsupport msgId\n", __func__);
+						m_dlMsgBufferContainer[i].length = 0;
+						m_nodePool->freeNode(node);
+						break;
+					}
                 }
 
-                LOG_DBG(UE_LOGGER_NAME, "[%s], save node = %p, in %d.%d\n", __func__, node, m_sfn, m_sf);
                 break;
             }
         }  
+
+        if (!foundFreeBuffer) {
+        	LOG_ERROR(UE_LOGGER_NAME, "[%s], Fail to get free buffer, free the node = %p\n", __func__, node);
+        	m_nodePool->freeNode(node);
+        }
+    }
+}
+
+// ----------------------------------------
+void UeScheduler::handleUeConfigReq(FAPI_phyUeConfigRequest_st* pUeConfigReq) {
+	LOG_TRACE(UE_LOGGER_NAME, "[%s], cfgMode = %d\n", __func__, pUeConfigReq->cfgMode);
+
+	UInt16 rnti = 0;
+	UInt16 srConfigIndex = 0;
+	BOOL foundRnti = FALSE;
+	BOOL foundSRConfigIndex = FALSE;
+
+	UInt8 tlvIndex=0;
+	for(tlvIndex=0; tlvIndex<pUeConfigReq->numOfTlv; tlvIndex++) {
+
+		if (foundRnti && foundSRConfigIndex) {
+			break;
+		}
+
+		switch(pUeConfigReq->configtlvs[tlvIndex].tag) {
+
+			case FAPI_RNTI:
+			{
+				rnti = pUeConfigReq->configtlvs[tlvIndex].ueConfigParam.rnti;
+				LOG_INFO(UE_LOGGER_NAME, "[%s], rnti = 0x%x\n", __func__, rnti)
+				foundRnti = TRUE;
+				break;
+			}
+
+			case FAPI_SR_CONFIG_INDEX:
+			{
+				LOG_DBG(UE_LOGGER_NAME, "[%s], srConfigIndex = %d\n", __func__, pUeConfigReq->configtlvs[tlvIndex].ueConfigParam.srConfigIndex);
+				srConfigIndex = pUeConfigReq->configtlvs[tlvIndex].ueConfigParam.srConfigIndex;
+				foundSRConfigIndex = TRUE;
+				break;
+			}
+
+			case FAPI_TRANSMISSION_MODE_PRESENT:
+			{
+				LOG_TRACE(UE_LOGGER_NAME, "[%s], transModePresent = %d\n", __func__, pUeConfigReq->configtlvs[tlvIndex].ueConfigParam.transModePresent);
+				break;
+			}
+			case FAPI_TRANSMISSION_MODE:
+			{
+				LOG_TRACE(UE_LOGGER_NAME, "[%s], transMode = %d\n", __func__, pUeConfigReq->configtlvs[tlvIndex].ueConfigParam.transMode);
+				break;
+			}
+			case FAPI_CQI_CONFIG_INFO_PRESENT:
+			{
+				LOG_TRACE(UE_LOGGER_NAME, "[%s], cqiCfgPresent = %d\n", __func__, pUeConfigReq->configtlvs[tlvIndex].ueConfigParam.cqiCfgPresent);
+				break;
+			}
+			case FAPI_APERIODIC_CQI_CFG_PRESENT:
+			{
+				LOG_TRACE(UE_LOGGER_NAME, "[%s], aperiodicCqiCfgPresent = %d\n", __func__, pUeConfigReq->configtlvs[tlvIndex].ueConfigParam.aperiodicCqiCfgPresent);
+				break;
+			}
+			case FAPI_APERIODIC_CQI_CFG_EN:
+			{
+				LOG_TRACE(UE_LOGGER_NAME, "[%s], aperiodicCqiCfgEn = %d\n", __func__, pUeConfigReq->configtlvs[tlvIndex].ueConfigParam.aperiodicCqiCfgEn);
+				break;
+			}
+			case FAPI_APERIODIC_CQI_REPORT_MODE:
+			{
+				LOG_TRACE(UE_LOGGER_NAME, "[%s], aperiodicCqiReportMode = %d\n", __func__, pUeConfigReq->configtlvs[tlvIndex].ueConfigParam.aperiodicCqiReportMode);
+				break;
+			}
+			case FAPI_PDSCH_EPRE_TO_UE_RS_RATIO:
+			{
+				LOG_TRACE(UE_LOGGER_NAME, "[%s], pdschEpreToUeRsRatio = %d\n", __func__, pUeConfigReq->configtlvs[tlvIndex].ueConfigParam.pdschEpreToUeRsRatio);
+				break;
+			}
+			case FAPI_PERIODIC_CQI_CFG_PRESENT:
+			{
+				LOG_TRACE(UE_LOGGER_NAME, "[%s], periodicCqiCfgPresent = %d\n", __func__, pUeConfigReq->configtlvs[tlvIndex].ueConfigParam.periodicCqiCfgPresent);
+				break;
+			}
+			case FAPI_PERIODIC_CQI_CFG_EN:
+			{
+				LOG_TRACE(UE_LOGGER_NAME, "[%s], periodicCqiCfgEn = %d\n", __func__, pUeConfigReq->configtlvs[tlvIndex].ueConfigParam.periodicCqiCfgEn);
+				break;
+			}
+			case FAPI_CQI_PUCCH_RESOURCE_INDEX:
+			{
+				LOG_TRACE(UE_LOGGER_NAME, "[%s], cqiPucchResourceIndex = %d\n", __func__, pUeConfigReq->configtlvs[tlvIndex].ueConfigParam.cqiPucchResourceIndex);
+				break;
+			}
+			case FAPI_CQI_PMI_CONFIG_INDEX:
+			{
+				LOG_TRACE(UE_LOGGER_NAME, "[%s], cqiPmiConfigIndex = %d\n", __func__, pUeConfigReq->configtlvs[tlvIndex].ueConfigParam.cqiPmiConfigIndex);
+				break;
+			}
+			case FAPI_CQI_RI_CONFIG_INDEX:
+			{
+				LOG_TRACE(UE_LOGGER_NAME, "[%s], cqiRiConfigIndex = %d\n", __func__, pUeConfigReq->configtlvs[tlvIndex].ueConfigParam.cqiRiConfigIndex);
+				break;
+			}
+			case FAPI_SIMULTANEOUS_ACK_NACK_AND_CQI:
+			{
+				LOG_TRACE(UE_LOGGER_NAME, "[%s], simultaneousAckNackAndCqi = %d\n", __func__, pUeConfigReq->configtlvs[tlvIndex].ueConfigParam.simultaneousAckNackAndCqi);
+				break;
+			}
+			case FAPI_CQI_FORMAT_INDICATOR_PERIODIC:
+			{
+				LOG_TRACE(UE_LOGGER_NAME, "[%s], cqiformatIndicatorPeriodic = %d\n", __func__, pUeConfigReq->configtlvs[tlvIndex].ueConfigParam.cqiformatIndicatorPeriodic);
+				break;
+			}
+			case FAPI_CQI_MASK_V920_EN:
+			{
+				LOG_TRACE(UE_LOGGER_NAME, "[%s], cqiMask_v920_En = %d\n", __func__, pUeConfigReq->configtlvs[tlvIndex].ueConfigParam.cqiMask_v920_En);
+				break;
+			}
+			case FAPI_CQI_MASK_V920:
+			{
+				LOG_TRACE(UE_LOGGER_NAME, "[%s], cqiMask_v920 = %d\n", __func__, pUeConfigReq->configtlvs[tlvIndex].ueConfigParam.cqiMask_v920);
+				break;
+			}
+			case FAPI_PMI_RI_REPORT_V920_EN:
+			{
+				LOG_TRACE(UE_LOGGER_NAME, "[%s], pmiRiReport_V920_En = %d\n", __func__, pUeConfigReq->configtlvs[tlvIndex].ueConfigParam.pmiRiReport_V920_En);
+				break;
+			}
+			case FAPI_PMI_RI_REPORT_V920:
+			{
+				LOG_TRACE(UE_LOGGER_NAME, "[%s], pmiRiReport_V920 = %d\n", __func__, pUeConfigReq->configtlvs[tlvIndex].ueConfigParam.pmiRiReport_V920);
+				break;
+			}
+			case FAPI_K:
+			{
+				LOG_TRACE(UE_LOGGER_NAME, "[%s], cqiformatIndicatorPeriodic_subband_k = %d\n", __func__, pUeConfigReq->configtlvs[tlvIndex].ueConfigParam.cqiformatIndicatorPeriodic_subband_k);
+				break;
+			}
+			case FAPI_ACK_NACK_CONFIG_PRESENT:
+			{
+				LOG_TRACE(UE_LOGGER_NAME, "[%s], ackNAckConfigPresent = %d\n", __func__, pUeConfigReq->configtlvs[tlvIndex].ueConfigParam.ackNAckConfigPresent);
+				break;
+			}
+			case FAPI_AN_N1_PUCCH_AN_REP:
+			{
+				LOG_TRACE(UE_LOGGER_NAME, "[%s], anN1PUCCHANRep = %d\n", __func__, pUeConfigReq->configtlvs[tlvIndex].ueConfigParam.anN1PUCCHANRep);
+				break;
+			}
+			case FAPI_TDD_ACK_NACK_FEEDBACK_MODE_EN:
+			{
+				LOG_TRACE(UE_LOGGER_NAME, "[%s], tddAckNackFeedbackModeEn = %d\n", __func__, pUeConfigReq->configtlvs[tlvIndex].ueConfigParam.tddAckNackFeedbackModeEn);
+				break;
+			}
+			case FAPI_TDD_ACK_NACK_FEEDBACK_MODE:
+			{
+				LOG_TRACE(UE_LOGGER_NAME, "[%s], tddAckNackFeedbackMode = %d\n", __func__, pUeConfigReq->configtlvs[tlvIndex].ueConfigParam.tddAckNackFeedbackMode);
+				break;
+			}
+			case FAPI_SRS_CONFIG_PRESENT:
+			{
+				LOG_TRACE(UE_LOGGER_NAME, "[%s], srsConfigPresent = %d\n", __func__, pUeConfigReq->configtlvs[tlvIndex].ueConfigParam.srsConfigPresent);
+				break;
+			}
+			case FAPI_FREQ_DOMAIN_POSITION:
+			{
+				LOG_TRACE(UE_LOGGER_NAME, "[%s], freqDomainPosition = %d\n", __func__, pUeConfigReq->configtlvs[tlvIndex].ueConfigParam.freqDomainPosition);
+				break;
+			}
+			case FAPI_SRS_CONFIG_INDEX:
+			{
+				LOG_TRACE(UE_LOGGER_NAME, "[%s], srsConfigIndex = %d\n", __func__, pUeConfigReq->configtlvs[tlvIndex].ueConfigParam.srsConfigIndex);
+				break;
+			}
+			case FAPI_SRS_CYCLIC_SHIFT:
+			{
+				LOG_TRACE(UE_LOGGER_NAME, "[%s], soundingRefCyclicShift = %d\n", __func__, pUeConfigReq->configtlvs[tlvIndex].ueConfigParam.soundingRefCyclicShift);
+				break;
+			}
+			case FAPI_SRS_DURATION:
+			{
+				LOG_TRACE(UE_LOGGER_NAME, "[%s], srsDuration = %d\n", __func__, pUeConfigReq->configtlvs[tlvIndex].ueConfigParam.srsDuration);
+				break;
+			}
+			case FAPI_SRS_HOPPING_BANDWIDTH:
+			{
+				LOG_TRACE(UE_LOGGER_NAME, "[%s], srsHoppingBandwidth = %d\n", __func__, pUeConfigReq->configtlvs[tlvIndex].ueConfigParam.srsHoppingBandwidth);
+				break;
+			}
+			case FAPI_SRS_BANDWIDTH:
+			{
+				LOG_TRACE(UE_LOGGER_NAME, "[%s], srSBandWidth = %d\n", __func__, pUeConfigReq->configtlvs[tlvIndex].ueConfigParam.srSBandWidth);
+				break;
+			}
+			case FAPI_SRS_EN:
+			{
+				LOG_TRACE(UE_LOGGER_NAME, "[%s], srsConfigEn = %d\n", __func__, pUeConfigReq->configtlvs[tlvIndex].ueConfigParam.srsConfigEn);
+				break;
+			}
+			case FAPI_SRS_TRANSMISSION_COMB:
+			{
+				LOG_TRACE(UE_LOGGER_NAME, "[%s], txComb = %d\n", __func__, pUeConfigReq->configtlvs[tlvIndex].ueConfigParam.txComb);
+				break;
+			}
+			case FAPI_SR_CONFIG_PRESENT:
+			{
+				LOG_TRACE(UE_LOGGER_NAME, "[%s], srConfigPresent = %d\n", __func__, pUeConfigReq->configtlvs[tlvIndex].ueConfigParam.srConfigPresent);
+				break;
+			}
+			case FAPI_SR_PUCCH_RESOURCE_INDEX:
+			{
+				LOG_TRACE(UE_LOGGER_NAME, "[%s], srPucchResourceIndex = %d\n", __func__, pUeConfigReq->configtlvs[tlvIndex].ueConfigParam.srPucchResourceIndex);
+				break;
+			}
+			case FAPI_SR_EN:
+			{
+				LOG_TRACE(UE_LOGGER_NAME, "[%s], srConfigEn = %d\n", __func__, pUeConfigReq->configtlvs[tlvIndex].ueConfigParam.srConfigEn);
+				break;
+			}
+			case FAPI_SPS_DL_CONFIG_PRESENT:
+			{
+				LOG_TRACE(UE_LOGGER_NAME, "[%s], spsDlConfigPresent = %d\n", __func__, pUeConfigReq->configtlvs[tlvIndex].ueConfigParam.spsDlConfigPresent);
+				break;
+			}
+			case FAPI_SPS_DL_EN:
+			{
+				LOG_TRACE(UE_LOGGER_NAME, "[%s], spsDlEn = %d\n", __func__, pUeConfigReq->configtlvs[tlvIndex].ueConfigParam.spsDlEn);
+				break;
+			}
+			case FAPI_SPS_DL_CONFIG_SCHED_INTERVAL:
+			{
+				LOG_TRACE(UE_LOGGER_NAME, "[%s], spsDlConfigSchedInterval = %d\n", __func__, pUeConfigReq->configtlvs[tlvIndex].ueConfigParam.spsDlConfigSchedInterval);
+				break;
+			}
+			case FAPI_SPS_DL_N1_PUCCH_AN_PERSISTENT0:
+			{
+				LOG_TRACE(UE_LOGGER_NAME, "[%s], spsDln1PUCCHANPersistent0 = %d\n", __func__, pUeConfigReq->configtlvs[tlvIndex].ueConfigParam.spsDln1PUCCHANPersistent0)
+				break;
+			}
+			case FAPI_SPS_DL_N1_PUCCH_AN_PERSISTENT1:
+			{
+				LOG_TRACE(UE_LOGGER_NAME, "[%s], spsDln1PUCCHANPersistent1 = %d\n", __func__, pUeConfigReq->configtlvs[tlvIndex].ueConfigParam.spsDln1PUCCHANPersistent1);
+				break;
+			}
+			case FAPI_SPS_DL_N1_PUCCH_AN_PERSISTENT2:
+			{
+				LOG_TRACE(UE_LOGGER_NAME, "[%s], spsDln1PUCCHANPersistent2 = %d\n", __func__, pUeConfigReq->configtlvs[tlvIndex].ueConfigParam.spsDln1PUCCHANPersistent2);
+				break;
+			}
+			case FAPI_SPS_DL_N1_PUCCH_AN_PERSISTENT3:
+			{
+				LOG_TRACE(UE_LOGGER_NAME, "[%s], spsDln1PUCCHANPersistent3 = %d\n", __func__, pUeConfigReq->configtlvs[tlvIndex].ueConfigParam.spsDln1PUCCHANPersistent3);
+				break;
+			}
+			case FAPI_PUSCH_CONFIG_INFO_PRESENT:
+			{
+				LOG_TRACE(UE_LOGGER_NAME, "[%s], uePuschCfgPresent = %d\n", __func__, pUeConfigReq->configtlvs[tlvIndex].ueConfigParam.uePuschCfgPresent);
+				break;
+			}
+			case FAPI_PUSCH_CONFIG_BETAOFFSET_ACK_INDEX:
+			{
+				LOG_TRACE(UE_LOGGER_NAME, "[%s], betaOffsetACKIndex = %d\n", __func__, pUeConfigReq->configtlvs[tlvIndex].ueConfigParam.betaOffsetACKIndex);
+				break;
+			}
+			case FAPI_PUSCH_CONFIG_BETAOFFSET_RI_INDEX:
+			{
+				LOG_TRACE(UE_LOGGER_NAME, "[%s], betaOffsetRIIndex = %d\n", __func__, pUeConfigReq->configtlvs[tlvIndex].ueConfigParam.betaOffsetRIIndex);
+				break;
+			}
+			case FAPI_PUSCH_CONFIG_BETAOFFSET_CQI_INDEX:
+			{
+				LOG_TRACE(UE_LOGGER_NAME, "[%s], betaOffsetCQIIndex = %d\n", __func__, pUeConfigReq->configtlvs[tlvIndex].ueConfigParam.betaOffsetCQIIndex);
+				break;
+			}
+			default:
+			{
+				LOG_DBG(UE_LOGGER_NAME,
+						"[%s], pUeConfigReq->configtlvs[%d].tag[%d] is invalid.\n",
+						__func__, tlvIndex, pUeConfigReq->configtlvs[tlvIndex].tag);
+				break;
+			}
+		}
+	}
+
+	if (pUeConfigReq->cfgMode == 1) {
+		handleCreateUeReq(pUeConfigReq->ueIndex, rnti, srConfigIndex);
+		m_ueIndexRntiMap[pUeConfigReq->ueIndex] = rnti;
+	} else if (pUeConfigReq->cfgMode == 3){
+		map<UInt16, UInt16>::iterator it = m_ueIndexRntiMap.find(pUeConfigReq->ueIndex);
+		if (it != m_ueIndexRntiMap.end()) {
+			rnti = it->second;
+			handleDeleteUeReq(rnti);
+		} else {
+			LOG_ERROR(UE_LOGGER_NAME, "[%s], Invalid ueIndex = %d\n", __func__, pUeConfigReq->ueIndex);
+		}
+	} else {
+		LOG_ERROR(UE_LOGGER_NAME, "[%s], unsupported cfgMode = %d\n", __func__, pUeConfigReq->cfgMode);
+	}
+}
+
+// ----------------------------------------
+void UeScheduler::handleCreateUeReq(UInt16 ueIndex, UInt16 rnti, UInt16 srConfigIndex) {
+    LOG_TRACE(UE_LOGGER_NAME, "[%s], create rnti = %d, ueIndex = %d\n", __func__, rnti, ueIndex);
+
+    if (rnti <= m_maxRaRntiUeId) {
+        // For RAR, rnti is ra-rnti, which is the same as ueId
+        m_ueList[rnti-1]->handleCreateUeReq(srConfigIndex);
+    } else {
+        // other msg, c-rnti
+        map<UInt16, UInt8>::iterator it = m_rntiUeIdMap.find(rnti);
+        if (it != m_rntiUeIdMap.end()) {
+            UInt8 ueId = it->second;
+            if (ueId <= m_maxRaRntiUeId) {
+                m_ueList[ueId-1]->handleCreateUeReq(srConfigIndex);
+            } else {
+                LOG_ERROR(UE_LOGGER_NAME, "[%s], Invalid ueId = %d\n", __func__, ueId);
+            }
+        } else {
+            LOG_ERROR(UE_LOGGER_NAME, "[%s], Fail to get ueId by rnti = %d\n", __func__, rnti);
+        }
     }
 }
 
 // ----------------------------------------
 void UeScheduler::handleDeleteUeReq(UInt16 rnti) {
-    LOG_DBG(UE_LOGGER_NAME, "[%s], delete rnti = %d\n", __func__, rnti);
+	LOG_TRACE(UE_LOGGER_NAME, "[%s], delete rnti = %d\n", __func__, rnti);
 
     if (rnti <= m_maxRaRntiUeId) {
         // For RAR, rnti is ra-rnti, which is the same as ueId
@@ -118,15 +572,33 @@ void UeScheduler::handleDeleteUeReq(UInt16 rnti) {
 }
 
 // ----------------------------------------
-void UeScheduler::schedule() {
+BOOL UeScheduler::schedule() {
     m_pduIndexUeIdMap.clear();
 
-    int numUeSchedule = 1;//MAC_UE_SUPPORTED;
-    for(int i=0; i<numUeSchedule; i++) {
-        m_ueList[i]->schedule(m_sfn, m_sf, this);
+    if ( !((m_prevSfn == m_sfn) && (m_prevSf == m_sf)) ) {
+		int numUeSchedule = MAX_UE_SUPPORTED;
+		BOOL isScheduling = FALSE;
+		for(int i=0; i<numUeSchedule; i++) {
+			if (m_ueList[i] != 0) {
+				if (!m_ueList[i]->schedule(m_sfn, m_sf, this)) {
+					delete m_ueList[i];
+					m_ueList[i] = 0;
+				} else {
+					isScheduling = TRUE;
+				}
+			}
+		}
+
+		if (!isScheduling) {
+			return FALSE;
+		}
+    } else {
+    	LOG_WARN(UE_LOGGER_NAME, "[%s], sfnSf is not changed\n", __func__);
     }
 
     processData();
+
+    return TRUE;
 }
 
 // ----------------------------------------
@@ -153,13 +625,17 @@ BOOL UeScheduler::validateSfnSf(BOOL isULCfg, UInt16 sfn, UInt8 sf) {
 
 // ----------------------------------------
 void UeScheduler::processData() {
+	LOG_TRACE(UE_LOGGER_NAME, "[%s], Entry\n", __func__);
+
+	// --------------------------------------------------------
     // process UL Cfg
+	// TODO if more than one, need to save in node list
     if (m_ulCfgMsg.length > 0) {
         FAPI_l1ApiMsg_st* pL1Api = (FAPI_l1ApiMsg_st *)m_ulCfgMsg.data;
         FAPI_ulConfigRequest_st *pUlConfigReq = (FAPI_ulConfigRequest_st *)&pL1Api->msgBody[0];        
         UInt8 sf  = pUlConfigReq->sfnsf & 0x000f;
         UInt16 sfn  = (pUlConfigReq->sfnsf & 0xfff0) >> 4;
-        LOG_DBG(UE_LOGGER_NAME, "[%s], handle msgId = 0x%02x in %d.%d, the provision sfnsf is %d.%d\n", __func__, 
+        LOG_DBG(UE_LOGGER_NAME, "[%s], handle msgId = 0x%02x in %d.%d, the provision sfnsf is %d.%d\n", __func__,
             pL1Api->msgId, m_sfn, m_sf, sfn, sf);
  
         if (!validateSfnSf(TRUE, sfn, sf) || (sf == m_sf && sfn == m_sfn)) {
@@ -170,92 +646,221 @@ void UeScheduler::processData() {
         }
     }
 
-    // process DL Cfg / DL Data
-    Node* node = 0;
+    // --------------------------------------------------------
+    // process DL Cfg
+    Node* node = m_dlConfigNodeHead;
+    Node* prevNode = m_dlConfigNodeHead;
     DlMsgBuffer* msgBuffer = 0;
+    while (node != 0) {
+    	LOG_DBG(UE_LOGGER_NAME, "[%s], node = %p\n", __func__, node);
 
-    while (m_head != 0) {
-        LOG_DBG(UE_LOGGER_NAME, "[%s], m_head = %p\n", __func__, m_head);
-        node = m_head;
         msgBuffer = (DlMsgBuffer*)node->buffer;
         UInt16 msgId = 0;
         FAPI_l1ApiMsg_st *pL1Api = (FAPI_l1ApiMsg_st *)msgBuffer->data;
-        msgId = pL1Api->msgId;       
+        msgId = pL1Api->msgId;
 
         FapiL1MsgHead* pMsgHead = (FapiL1MsgHead*)&pL1Api->msgBody[0];
         UInt8 sf  = pMsgHead->sfnsf & 0x000f;
         UInt16 sfn  = (pMsgHead->sfnsf & 0xfff0) >> 4;
-        LOG_DBG(UE_LOGGER_NAME, "[%s], handle msgId = 0x%02x in %d.%d, the provision sfnsf is %d.%d\n", __func__, 
-            msgId, m_sfn, m_sf, sfn, sf);
+        LOG_DBG(UE_LOGGER_NAME, "[%s], handle PHY_DL_CONFIG_REQUEST in %d.%d, the provision sfnsf is %d.%d\n", __func__,
+            m_sfn, m_sf, sfn, sf);
 
-        if (!validateSfnSf(TRUE, sfn, sf) || (sf == m_sf && sfn == m_sfn)) {
-            switch(msgId) {
-                case PHY_DELETE_UE_REQUEST:
-                {
-                    UInt16* pMsg = (UInt16*)&pL1Api->msgBody[0];
-                    UInt16* pRnti = ++pMsg;
-                    handleDeleteUeReq(*pRnti);
-                    break;
-                }
-                
-                case PHY_DL_CONFIG_REQUEST:
-                {
-                    FAPI_dlConfigRequest_st *pDlConfigReq = (FAPI_dlConfigRequest_st *)&pL1Api->msgBody[0];
-                    if (pDlConfigReq->length == (pL1Api->msgLen + pL1Api->lenVendorSpecific)) {
-                        handleDlConfigReq(pDlConfigReq);
-                    }            
-                    break;
-                }
-
-                // case PHY_UL_CONFIG_REQUEST:
-                // {
-                //     FAPI_ulConfigRequest_st *pUlConfigReq = (FAPI_ulConfigRequest_st *)&pL1Api->msgBody[0];
-                //     if(pUlConfigReq->ulConfigLen == (pL1Api->msgLen + pL1Api->lenVendorSpecific)) {
-                //         handleUlConfigReq(pUlConfigReq);
-                //     }
-                //     break;            
-                // }
-                
-                case PHY_DL_HI_DCI0_REQUEST:
-                {
-                    FAPI_dlHiDCIPduInfo_st *pHIDci0Req = (FAPI_dlHiDCIPduInfo_st *)&pL1Api->msgBody[0];
-                    handleHIDci0Req(pHIDci0Req);
-                    break;
-                }
-
-                case PHY_DL_TX_REQUEST:
-                {
-                    FAPI_dlDataTxRequest_st* pDlDataReq = (FAPI_dlDataTxRequest_st*)&pL1Api->msgBody[0];
-                    handleDlDataReq(pDlDataReq);
-                    break;
-                }
-
-                default:
-                    LOG_ERROR(UE_LOGGER_NAME, "[%s], Invalid msgId = 0x%02x\n", __func__, msgId);
-                    break;
-            }  
+        if (!validateSfnSf(FALSE, sfn, sf) || (sf == m_sf && sfn == m_sfn)) {
+			FAPI_dlConfigRequest_st *pDlConfigReq = (FAPI_dlConfigRequest_st *)&pL1Api->msgBody[0];
+			if (pDlConfigReq->length == (pL1Api->msgLen + pL1Api->lenVendorSpecific)) {
+				handleDlConfigReq(pDlConfigReq);
+			}
 
             // free the buffer and node
             msgBuffer->length = 0;
-            m_head = node->next;
-            if (m_head !=0 ) {
-                m_head->tail = node->tail;
+
+            if (node->tail != 0) {
+            	// current node is the head, take next as head
+            	m_dlConfigNodeHead = node->next;
+				if (m_dlConfigNodeHead !=0 ) {
+					m_dlConfigNodeHead->tail = node->tail;
+				}
+				prevNode = m_dlConfigNodeHead;
+				m_nodePool->freeNode(node);
+				node = m_dlConfigNodeHead;
+            } else {
+            	prevNode->next = node->next;
+            	m_nodePool->freeNode(node);
+            	node = prevNode->next;
             }
-            m_nodePool->freeNode(node);
         } else {
-            LOG_DBG(UE_LOGGER_NAME, "[%s], stop handling\n", __func__);
+        	LOG_DBG(UE_LOGGER_NAME, "[%s], skip the rest dl config nodes\n", __func__);
+//            prevNode = node;
+//            node = node->next;
             break;
         }
     }
+
+    // --------------------------------------------------------
+    // process DL Data
+    node = m_dlDataNodeHead;
+    prevNode = m_dlDataNodeHead;
+    while (node != 0) {
+        LOG_DBG(UE_LOGGER_NAME, "[%s], node = %p\n", __func__, node);
+
+        msgBuffer = (DlMsgBuffer*)node->buffer;
+        UInt16 msgId = 0;
+        FAPI_l1ApiMsg_st *pL1Api = (FAPI_l1ApiMsg_st *)msgBuffer->data;
+        msgId = pL1Api->msgId;
+
+        FapiL1MsgHead* pMsgHead = (FapiL1MsgHead*)&pL1Api->msgBody[0];
+        UInt8 sf  = pMsgHead->sfnsf & 0x000f;
+        UInt16 sfn  = (pMsgHead->sfnsf & 0xfff0) >> 4;
+        LOG_DBG(UE_LOGGER_NAME, "[%s], handle PHY_DL_TX_REQUEST in %d.%d, the provision sfnsf is %d.%d\n", __func__,
+            m_sfn, m_sf, sfn, sf);
+
+        if (!validateSfnSf(FALSE, sfn, sf) || (sf == m_sf && sfn == m_sfn)) {
+        	FAPI_dlDataTxRequest_st* pDlDataReq = (FAPI_dlDataTxRequest_st*)&pL1Api->msgBody[0];
+			handleDlDataReq(pDlDataReq);
+
+            // free the buffer and node
+            msgBuffer->length = 0;
+
+            if (node->tail != 0) {
+            	// current node is the head, take next as head
+            	m_dlDataNodeHead = node->next;
+				if (m_dlDataNodeHead !=0 ) {
+					m_dlDataNodeHead->tail = node->tail;
+				}
+				prevNode = m_dlDataNodeHead;
+				m_nodePool->freeNode(node);
+				node = m_dlDataNodeHead;
+            } else {
+            	prevNode->next = node->next;
+            	m_nodePool->freeNode(node);
+            	node = prevNode->next;
+            }
+        } else {
+        	LOG_DBG(UE_LOGGER_NAME, "[%s], skip the rest dl data nodes\n", __func__);
+            break;
+        }
+    }
+
+    // --------------------------------------------------------
+    // process HI/DCI0
+    node = m_hiDci0NodeHead;
+    prevNode = m_hiDci0NodeHead;
+    while (node != 0) {
+        LOG_DBG(UE_LOGGER_NAME, "[%s], node = %p\n", __func__, node);
+
+        msgBuffer = (DlMsgBuffer*)node->buffer;
+        UInt16 msgId = 0;
+        FAPI_l1ApiMsg_st *pL1Api = (FAPI_l1ApiMsg_st *)msgBuffer->data;
+        msgId = pL1Api->msgId;
+
+        FapiL1MsgHead* pMsgHead = (FapiL1MsgHead*)&pL1Api->msgBody[0];
+        UInt8 sf  = pMsgHead->sfnsf & 0x000f;
+        UInt16 sfn  = (pMsgHead->sfnsf & 0xfff0) >> 4;
+        LOG_DBG(UE_LOGGER_NAME, "[%s], handle PHY_DL_HI_DCI0_REQUEST in %d.%d, the provision sfnsf is %d.%d\n", __func__,
+            m_sfn, m_sf, sfn, sf);
+
+        if (!validateSfnSf(FALSE, sfn, sf) || (sf == m_sf && sfn == m_sfn)) {
+            FAPI_dlHiDCIPduInfo_st *pHIDci0Req = (FAPI_dlHiDCIPduInfo_st *)&pL1Api->msgBody[0];
+            handleHIDci0Req(pHIDci0Req);
+
+            // free the buffer and node
+            msgBuffer->length = 0;
+
+            if (node->tail != 0) {
+            	// current node is the head, take next as head
+            	m_hiDci0NodeHead = node->next;
+				if (m_hiDci0NodeHead !=0 ) {
+					m_hiDci0NodeHead->tail = node->tail;
+				}
+				prevNode = m_hiDci0NodeHead;
+				m_nodePool->freeNode(node);
+				node = m_hiDci0NodeHead;
+            } else {
+            	prevNode->next = node->next;
+            	m_nodePool->freeNode(node);
+            	node = prevNode->next;
+            }
+        } else {
+        	LOG_DBG(UE_LOGGER_NAME, "[%s], skip the rest hi/dci0 nodes\n", __func__);
+            break;
+        }
+    }
+
+    // --------------------------------------------------------
+    // process UE Config
+    node = m_ueConfigNodeHead;
+    prevNode = m_ueConfigNodeHead;
+    while (node != 0) {
+        LOG_DBG(UE_LOGGER_NAME, "[%s], node = %p\n", __func__, node);
+
+        msgBuffer = (DlMsgBuffer*)node->buffer;
+        FAPI_l1ApiMsg_st *pL1Api = (FAPI_l1ApiMsg_st *)msgBuffer->data;
+
+#ifndef OS_LINUX
+        LOG_DBG(UE_LOGGER_NAME, "[%s], handle PHY_UE_CONFIG_REQUEST in %d.%d\n", __func__, m_sfn, m_sf);
+		FAPI_phyUeConfigRequest_st *pUeConfigReq = (FAPI_phyUeConfigRequest_st *)&pL1Api->msgBody[0];
+		handleUeConfigReq(pUeConfigReq);
+
+		// free the buffer and node
+		msgBuffer->length = 0;
+		m_ueConfigNodeHead = node->next;
+		m_nodePool->freeNode(node);
+		node = m_ueConfigNodeHead;
+#else
+        FapiL1MsgHead* pMsgHead = (FapiL1MsgHead*)&pL1Api->msgBody[0];
+        UInt8 sf  = pMsgHead->sfnsf & 0x000f;
+        UInt16 sfn  = (pMsgHead->sfnsf & 0xfff0) >> 4;
+        LOG_INFO(UE_LOGGER_NAME, "[%s], handle PHY_DELETE_UE_REQUEST in %d.%d, provSfnSf = %d.%d\n", __func__, m_sfn, m_sf, sfn, sf);
+
+        if (!validateSfnSf(FALSE, sfn, sf) || (sf == m_sf && sfn == m_sfn)) {
+        	UInt16* pMsg = (UInt16*)&pL1Api->msgBody[0];
+			UInt16* pRnti = ++pMsg;
+			handleDeleteUeReq(*pRnti);
+
+			// free the buffer and node
+			msgBuffer->length = 0;
+
+			if (node->tail != 0) {
+				// current node is the head, take next as head
+				m_ueConfigNodeHead = node->next;
+				if (m_ueConfigNodeHead !=0 ) {
+					m_ueConfigNodeHead->tail = node->tail;
+				}
+				prevNode = m_ueConfigNodeHead;
+				m_nodePool->freeNode(node);
+				node = m_ueConfigNodeHead;
+			} else {
+				prevNode->next = node->next;
+				m_nodePool->freeNode(node);
+				node = prevNode->next;
+			}
+		} else {
+			LOG_DBG(UE_LOGGER_NAME, "[%s], skip the rest ue config nodes\n", __func__);
+			break;
+		}
+#endif
+    }
+
 }
 
 // --------------------------------------------------------
 void UeScheduler::resetUeTerminal(UInt16 rnti, UInt8 ueId) {
-    LOG_DBG(UE_LOGGER_NAME, "[%s], rnti = %d, ueId = %d, %d.%d\n", __func__, rnti, ueId, m_sfn, m_sf);
+	LOG_TRACE(UE_LOGGER_NAME, "[%s], rnti = %d, ueId = %d, %d.%d\n", __func__, rnti, ueId, m_sfn, m_sf);
 
     std::map<UInt16, UInt8>::iterator it = m_rntiUeIdMap.find(rnti);
     if (it != m_rntiUeIdMap.end()) {
         m_rntiUeIdMap.erase(it);
+    }
+
+    // should not happen
+    it = m_rntiUeIdMap.begin();
+    while (it != m_rntiUeIdMap.end()) {
+    	if (it->second == ueId) {
+    		LOG_WARN(UE_LOGGER_NAME, "[%s], multiple rnti exists, delete it, rnti = %d, ueId = %d\n", __func__, it->first, ueId);
+    		m_rntiUeIdMap.erase(it++);
+    	} else {
+    		it++;
+    	}
     }
 
     it = m_pduIndexUeIdMap.begin();
@@ -300,7 +905,7 @@ void UeScheduler::handleDlConfigReq(FAPI_dlConfigRequest_st* pDlConfigReq) {
     UInt8 sf  = pDlConfigReq->sfnsf & 0x000f;
     UInt16 sfn  = (pDlConfigReq->sfnsf & 0xfff0) >> 4;
 
-    LOG_DBG(UE_LOGGER_NAME, "[%s], Recv PHY_DL_CONFIG_REQUEST, provSfnSf = %d.%d, curSfnSf = %d.%d\n", __func__, 
+    LOG_TRACE(UE_LOGGER_NAME, "[%s], Recv PHY_DL_CONFIG_REQUEST, provSfnSf = %d.%d, curSfnSf = %d.%d\n", __func__,
         sfn, sf, m_sfn, m_sf);
     
     FAPI_dlConfigPDUInfo_st *pNextPdu, *pPrevPdu;
@@ -320,9 +925,9 @@ void UeScheduler::handleDlConfigReq(FAPI_dlConfigRequest_st* pDlConfigReq) {
                 if (pNextPdu->dlConfigpduInfo.DCIPdu.dciFormat == FAPI_DL_DCI_FORMAT_1A ||
                     pNextPdu->dlConfigpduInfo.DCIPdu.dciFormat == FAPI_DL_DCI_FORMAT_1) {
                     if (rnti != 0xffff) {
-                        LOG_DBG(UE_LOGGER_NAME, "[%s], Recv FAPI_DL_DCI_FORMAT_1A / FAPI_DL_DCI_FORMAT_1 (%d), "
-                            "provSfnSf = %d.%d, rnti = %d, curSfnSf = %d.%d\n", __func__,
-                            pNextPdu->dlConfigpduInfo.DCIPdu.dciFormat, sfn, sf, rnti, m_sfn, m_sf);
+//                        LOG_DBG(UE_LOGGER_NAME, "[%s], Recv FAPI_DL_DCI_FORMAT_1A / FAPI_DL_DCI_FORMAT_1 (%d), "
+//                            "rnti = %d, curSfnSf = %d.%d\n", __func__,
+//                            pNextPdu->dlConfigpduInfo.DCIPdu.dciFormat, rnti, m_sfn, m_sf);
                         
                         if (rnti <= m_maxRaRntiUeId) {
                             // For RAR, rnti is ra-rnti, which is the same as ueId
@@ -353,7 +958,7 @@ void UeScheduler::handleDlConfigReq(FAPI_dlConfigRequest_st* pDlConfigReq) {
                         length += ((uintptr_t)pNextPdu - (uintptr_t)pPrevPdu);
                     }
                 } else {
-                    LOG_DBG(UE_LOGGER_NAME, "[%s], provSfnSf = %d.%d, curSfnSf = %d.%d, rnti = %d, dciFormat = %d, TODO\n", __func__,
+                	LOG_INFO(UE_LOGGER_NAME, "[%s], provSfnSf = %d.%d, curSfnSf = %d.%d, rnti = %d, dciFormat = %d, TODO\n", __func__,
                             sfn, sf, m_sfn, m_sf, rnti, pNextPdu->dlConfigpduInfo.DCIPdu.dciFormat);
 
                     pNextPdu = (FAPI_dlConfigPDUInfo_st *)(((UInt8 *)pNextPdu) + pNextPdu->pduSize); 
@@ -407,7 +1012,7 @@ void UeScheduler::handleDlConfigReq(FAPI_dlConfigRequest_st* pDlConfigReq) {
                 } else {
                     LOG_DBG(UE_LOGGER_NAME, "[%s], Recv FAPI_DLSCH_PDU (broadcast), "
                         "provSfnSf = %d.%d, rnti = %d, curSfnSf = %d.%d\n", __func__,
-                        sfn, sf, rnti, m_sfn, m_sf);                    
+                        sfn, sf, rnti, m_sfn, m_sf);
                 }
 
                 pNextPdu = (FAPI_dlConfigPDUInfo_st *)(((UInt8*)pNextPdu) + pNextPdu->pduSize);
@@ -439,7 +1044,7 @@ void UeScheduler::handleDlConfigReq(FAPI_dlConfigRequest_st* pDlConfigReq) {
             }
 
             default:
-                LOG_DBG(UE_LOGGER_NAME, "[%s], Invalid pduType = %d\n", __func__, pNextPdu->pduType);
+            	LOG_WARN(UE_LOGGER_NAME, "[%s], Invalid pduType = %d\n", __func__, pNextPdu->pduType);
                 pNextPdu = (FAPI_dlConfigPDUInfo_st *)(((UInt8 *)pNextPdu) + pNextPdu->pduSize);
                 if (pPrevPdu != pNextPdu) {
                     length += ((uintptr_t)pNextPdu - (uintptr_t)pPrevPdu);
@@ -462,7 +1067,7 @@ void UeScheduler::handleUlConfigReq(FAPI_ulConfigRequest_st* pUlConfigReq) {
     UInt8 sf  = pUlConfigReq->sfnsf & 0x000f;
     UInt16 sfn  = (pUlConfigReq->sfnsf & 0xfff0) >> 4;
 
-    LOG_DBG(UE_LOGGER_NAME, "[%s], Recv PHY_UL_CONFIG_REQUEST, provSfnSf = %d.%d, curSfnSf = %d.%d\n", __func__, 
+    LOG_TRACE(UE_LOGGER_NAME, "[%s], Recv PHY_UL_CONFIG_REQUEST, provSfnSf = %d.%d, curSfnSf = %d.%d\n", __func__,
         sfn, sf, m_sfn, m_sf);
 
     UInt8  *tmpBuff = (UInt8 *)(pUlConfigReq->ulPduConfigInfo);
@@ -476,8 +1081,8 @@ void UeScheduler::handleUlConfigReq(FAPI_ulConfigRequest_st* pUlConfigReq) {
             case FAPI_ULSCH:
             {
                 FAPI_ulSCHPduInfo_st *pUlSchPdu = (FAPI_ulSCHPduInfo_st *)(ulPduConf_p->ulPduConfigInfo);
-                LOG_DBG(UE_LOGGER_NAME, "[%s], [%d.%d], Recv FAPI_ULSCH, rnti = %d, numOfRB = %d, provSfnSf = %d.%d\n", __func__,
-                    m_sfn, m_sf, pUlSchPdu->rnti, pUlSchPdu->numOfRB, sfn, sf);
+                LOG_DBG(UE_LOGGER_NAME, "[%s], [%d.%d], Recv FAPI_ULSCH, rnti = %d, provSfnSf = %d.%d\n", __func__,
+                    m_sfn, m_sf, pUlSchPdu->rnti, sfn, sf);
 
                 map<UInt16, UInt8>::iterator it = m_rntiUeIdMap.find(pUlSchPdu->rnti);
                 if (it != m_rntiUeIdMap.end()) {
@@ -640,7 +1245,7 @@ void UeScheduler::handleHIDci0Req(FAPI_dlHiDCIPduInfo_st* pHIDci0Req) {
 
     UInt8 sf  = pHIDci0Req->sfnsf & 0x000f;
     UInt16 sfn  = (pHIDci0Req->sfnsf & 0xfff0) >> 4;
-    LOG_DBG(UE_LOGGER_NAME, "[%s], Recv PHY_DL_HI_DCI0_REQUEST, provSfnSf = %d.%d, curSfnSf = %d.%d\n", __func__,
+    LOG_TRACE(UE_LOGGER_NAME, "[%s], Recv PHY_DL_HI_DCI0_REQUEST, provSfnSf = %d.%d, curSfnSf = %d.%d\n", __func__,
         sfn, sf, m_sfn, m_sf);
 
     UInt8* pNextPdu = PNULL;
@@ -657,7 +1262,7 @@ void UeScheduler::handleHIDci0Req(FAPI_dlHiDCIPduInfo_st* pHIDci0Req) {
         if (pduType == FAPI_HI_PDU) { 
             // HARQ ACK for UL TB
             FAPI_dlHiPduInfo_st* pHiPdu = (FAPI_dlHiPduInfo_st*)pNextPdu;
-            LOG_DBG(UE_LOGGER_NAME, "[%s], Recv FAPI_HI_PDU, rbStart = %d, cyclicShift2_forDMRS = %d, hiValue = %d, iPHICH = %d, txPower = %d\n", __func__, 
+            LOG_DBG(UE_LOGGER_NAME, "[%s], Recv FAPI_HI_PDU, rbStart = %d, cyclicShift2_forDMRS = %d, hiValue = %d, iPHICH = %d, txPower = %d\n", __func__,
                 pHiPdu->rbStart, pHiPdu->cyclicShift2_forDMRS, pHiPdu->hiValue, pHiPdu->iPHICH, pHiPdu->txPower);
 
             UInt32 ueIdHarqId;
@@ -671,11 +1276,11 @@ void UeScheduler::handleHIDci0Req(FAPI_dlHiDCIPduInfo_st* pHIDci0Req) {
                     ueId = (ueIdHarqId >> 16) & 0xff;
                     if (ueId <= m_maxRaRntiUeId) {
                         if (m_ueList[ueId-1]->handleHIPdu(pHIDci0Req, pHiPdu)) {
-                            LOG_DBG(UE_LOGGER_NAME, "[%s], Handle harq ack success\n", __func__);
+                        	LOG_DBG(UE_LOGGER_NAME, "[%s], Handle harq ack success\n", __func__);
                             m_ueIdHarqIdVect.erase(it);
                             break;
                         } else {
-                            LOG_INFO(UE_LOGGER_NAME, "[%s], Handle harq ack failed in ueId = %d\n", __func__, ueId);
+                            LOG_ERROR(UE_LOGGER_NAME, "[%s], Handle harq ack failed in ueId = %d\n", __func__, ueId);
                         }
                     } else {
                         LOG_ERROR(UE_LOGGER_NAME, "[%s], Invalid ueId = %d\n", __func__, ueId);
@@ -751,7 +1356,7 @@ void UeScheduler::handleDlDataReq(FAPI_dlDataTxRequest_st* pDlDataReq) {
         return;
     }
 
-    LOG_DBG(UE_LOGGER_NAME, "[%s], Recv PHY_DL_TX_REQUEST, provSfnSf = %d.%d, curSfnSf = %d.%d\n", __func__, 
+    LOG_TRACE(UE_LOGGER_NAME, "[%s], Recv PHY_DL_TX_REQUEST, provSfnSf = %d.%d, curSfnSf = %d.%d\n", __func__,
         sfn, sf, m_sfn, m_sf);
     
     FAPI_dlTLVInfo_st *pDlTlv = PNULL;
@@ -784,7 +1389,7 @@ void UeScheduler::handleDlDataReq(FAPI_dlDataTxRequest_st* pDlDataReq) {
                 LOG_ERROR(UE_LOGGER_NAME, "[%s], Invalid ueId = %d\n", __func__, ueId);
             }
         } else {
-            LOG_ERROR(UE_LOGGER_NAME, "[%s], Fail to get ueId by pduIndex = %d, it could be BCH pdu\n", __func__, pduIndex);
+            LOG_DBG(UE_LOGGER_NAME, "[%s], Fail to get ueId by pduIndex = %d, it could be BCH pdu\n", __func__, pduIndex);
         }
 
         pNextPdu = (FAPI_dlPduInfo_st *)(((UInt8 *)pNextPdu) + pNextPdu->pduLen);

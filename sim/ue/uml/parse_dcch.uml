@@ -1,0 +1,117 @@
+@startuml
+autonumber
+
+actor "User" as user
+participant "UeTerminal" as uet
+participant "DlHarqProcess" as dlhp
+participant "RlcLayer" as rlc
+participant "PdcpLayer" as pdcp
+participant "RrcLayer" as rrc
+
+
+user --> uet : PHY_DL_TX_REQUEST
+uet -> dlhp : receive DLSCH data
+
+...
+
+dlhp -> uet: dlHarqReceiveCallback
+
+uet -> uet ++ : parseMacPdu
+    alt lcid >=1 && lcid <= 10
+        uet -> rlc ++ : handleRxAMDPdu
+            alt dc == 1
+                rlc -> rlc ++ : reassembleAMDPdu
+                    alt fi == 0
+                        note over user, rrc
+                            only one single segment recvd                 
+                        end note
+                        alt e == 1
+                            rlc -> rlc ++ : handleExtField
+                                alt a complete RLC SDU found
+                                    rlc -> pdcp ++ : handleRxSrb
+                                        note over pdcp 
+                                            details as below
+                                        end note
+                                    return
+                                end
+                            return
+
+                            alt a complete RLC SDU found and not handled in handleExtField
+                                rlc -> pdcp ++ : handleRxSrb
+                                    note over pdcp 
+                                        details as below
+                                    end note
+                                return
+                            end
+                        else e == 0
+                            rlc -> pdcp ++ : handleRxSrb
+                                pdcp -> rrc ++ : handleRxRRCMessage
+                                    rrc -> rrc ++ : decode
+                                        note over rrc
+                                            decode to get below msg:\n 
+                                                Identity Request
+                                                Attach Reject
+                                                RRC Release
+                                        end note
+                                    return msgType
+                                    rrc -> uet ++ : rrcCallback
+                                        alt recv Identity Request 
+                                            uet --> user : send SR to request UL resource \nfor Identity Response
+                                        end 
+                                    return
+                                return
+                            return
+                        end
+
+                    else fi == 1
+                        note over user, rlc
+                            receive the first RLC segment, save it in list
+                        end note
+                        rlc -> rlc : save the segment
+
+                    else fi == 2
+                        note over user, rrc
+                            receive the last RLC segment
+                        end note
+
+                        loop until all segments are handled
+                            alt e == 1
+                                rlc -> rlc ++ : handleExtField
+                                    note over rlc
+                                        refer to above step 7 for details
+                                    end note
+                                return
+                            else e == 0
+                                rlc -> rlc : add and save the segment data
+                            end 
+
+                            alt it's the last segment and save data not empty
+                                rlc -> pdcp ++ : handleRxSrb
+                                    note over pdcp
+                                        refer to above step 13 for details
+                                    end note
+                                return
+                            end
+                        end
+
+                    else fi == 3
+                        note over user, rrc
+                            Not Supported yet
+                        end note
+                    end
+
+                    alt p == 1
+                        note over user, rlc 
+                            need to send status report to eNodeB
+                        end note
+                        rlc -> uet ++ : rlcCallback
+                            uet --> user : send SR to request UL resource \nfor RLC status report
+                        return
+                    end 
+                return
+            end
+        return
+    end
+return
+
+@enduml

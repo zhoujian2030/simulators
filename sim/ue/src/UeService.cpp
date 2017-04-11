@@ -35,10 +35,10 @@ unsigned long UeService::run() {
     // Socket::InetAddressPort remoteAddress;
     // Int32 recvLength;   
 
-    m_ueMacAPI = new UeMacAPI(m_recvBuffer);
+    m_phyMacAPI = new PhyMacAPI(m_recvBuffer);
 
     m_udpServerSocket = new UdpSocket("0.0.0.0", 9999);
-    m_udpServerSocket->addSocketHandlerForNonAsync(m_ueMacAPI, (char*)m_recvBuffer, SOCKET_BUFFER_LENGTH);
+    m_udpServerSocket->addSocketHandlerForNonAsync(m_phyMacAPI, (char*)m_recvBuffer, SOCKET_BUFFER_LENGTH);
 
     m_selectSocketSet = new SelectSocketSet();
     m_selectSocketSet->registerInputHandler(m_udpServerSocket, (SocketEventHandler*)m_udpServerSocket);    

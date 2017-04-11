@@ -12,7 +12,7 @@
 #include "lteTypes.h"
 #define FAPI_API
 
-#define SOCKET_BUFFER_LENGTH 4096
+#define SOCKET_BUFFER_LENGTH 1024
 #define DL_PHY_DELAY 2
 #define UL_PHY_DELAY 1
 

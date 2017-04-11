@@ -1,0 +1,44 @@
+@startuml
+autonumber
+
+actor "User" as user
+participant "UeScheduler" as ues
+participant "UeTerminal" as uet
+participant "HarqEntity" as he
+participant "DlHarqProcess" as dlhp
+
+user --> ues : FAPI_DCI_DL_PDU
+ues -> uet ++ : handleDlDciPdu
+    uet -> he ++ : allocateDlHarqProcess
+        he -> dlhp ++ : prepareReceiving            
+        return
+        he -> uet ++ : allocateDlHarqCallback
+        return
+    return
+return
+
+user --> ues : PHY_DL_TX_REQUEST
+ues -> uet ++ : handleDlDataReq
+    uet -> he ++ : receive
+        he -> dlhp ++ : receive
+            dlhp -> uet ++ : dlHarqReceiveCallback
+                uet -> uet : parse the dl msg
+            return
+        return
+    return
+return
+
+ues -> uet ++ : schedule
+    uet -> uet ++ : processDlHarq
+        uet -> he ++ : sendAck
+            he -> dlhp ++ : sendAck
+                dlhp -> uet ++ : dlHarqResultCallback
+                    uet --> user : send HARQ ACK
+                return
+            return
+        return
+    return
+return 
+
+
+@enduml

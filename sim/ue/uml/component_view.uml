@@ -1,0 +1,24 @@
+@startuml
+
+
+
+[PHY Adapter] -right..> qmss : use
+[UE]  <-> [PHY Adapter]
+
+[UE] -down-> [Counter] 
+[PHY Adapter] -down-> [Counter] 
+
+[UE] -down-> [Logger] 
+[PHY Adapter] -down-> [Logger] 
+[Counter] -> [Logger]
+
+[Logger] -up..> qmss : use
+
+
+
+
+[L2/L3/OAM] -left..> qmss : use
+
+
+
+@enduml

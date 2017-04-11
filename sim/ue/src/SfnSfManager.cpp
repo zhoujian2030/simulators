@@ -91,7 +91,7 @@ unsigned long SfnSfManager::run() {
         //     LOG_DBG(UE_LOGGER_NAME, "[%s], Send notification to UE service\n", __func__);
         //     m_ueService->postEvent();
         // }
-        Thread::sleep(200);
+        Thread::sleep(100);
     }
 
     return 0; 

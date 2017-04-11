@@ -15,10 +15,11 @@
 namespace ue {
 
     class UeTerminal;
+    class StsCounter;
 
     class HarqEntity {
     public:
-        HarqEntity(UInt16 numOfUlHarqProcess = 2, UInt16 numOfDlHarqProcess = 10);
+        HarqEntity(StsCounter* stsCounter, UInt16 numOfUlHarqProcess = 2, UInt16 numOfDlHarqProcess = 10);
         ~HarqEntity();
 
         void reset();
@@ -43,7 +44,7 @@ namespace ue {
         // DL HARQ Process
         class DlHarqProcess {
         public:
-            DlHarqProcess(UInt16 index);
+            DlHarqProcess(StsCounter* stsCounter, UInt16 index);
             ~DlHarqProcess();
 
             BOOL isFree() const;            
@@ -61,6 +62,8 @@ namespace ue {
                 TB_RECEIVED
             };
 
+            StsCounter* m_stsCounter;
+
             UInt16 m_index;
             UInt8 m_state;
             UInt8 m_ueState;
@@ -70,13 +73,15 @@ namespace ue {
 
             UInt16 m_harqAckSfn;
             UInt8 m_harqAckSf;  
+
+            UInt8 m_waitTBCount;
         };
 
         // -------------------------------------------------
         // UL HARQ Process
         class UlHarqProcess {
         public:
-            UlHarqProcess(UInt16 index);
+            UlHarqProcess(StsCounter* stsCounter, UInt16 index);
             ~UlHarqProcess();
 
             BOOL isFree() const;                     
@@ -104,6 +109,8 @@ namespace ue {
 
             friend class UeTerminal;
 
+            StsCounter* m_stsCounter;
+
             UInt16 m_index;
             UInt8 m_state;
             UInt8 m_ueState;
@@ -121,6 +128,7 @@ namespace ue {
         
 
     private:
+        StsCounter* m_stsCounter;
         UlHarqProcess** m_ulHarqProcessList;
         UInt16 m_numUlHarqProcess;
         std::map<UInt16, UInt16> m_harqIdUlIndexMap;

@@ -123,14 +123,15 @@ l2 -> ue : [**8.1**] FAPI_UCI_SR
 ue -> l2 : [**8.2**] SR
 l2 -> ue : [**8.8**] FAPI_UL_DCI_FORMAT_0 (1 RB)
 l2 -> phy : [**9.1**] FAPI_ULSCH
-ue -> l2 : [**9.2**] BSR
+ue -> l2 : [**9.2**] BSR & RLC ACK for Identity Request
 phy -> l2 : [**9.2**] BSR CRC (0: Correct)
 
-l2 -> ue : [**9.8**] FAPI_HI_PDU (HARQ ACK for BSR)
+l2 -> ue : [**9.8**] FAPI_HI_PDU (HARQ ACK for BSR & RLC ACK)
 l2 -> ue : [**9.8**] FAPI_UL_DCI_FORMAT_0 (12 RB)
 l2 -> phy : [**10.1**] FAPI_ULSCH (For receiving Identity Response)
 ue -> l2 : [**10.2**] Identity Response
 phy -> l2 : [**10.2**] Identity Response CRC (0: Correct)
+l2 -> l3 : Identity Response
 
 note over ue, l2
 Network sends Attach Reject & RRC Release after Identity Responose received

@@ -1,0 +1,80 @@
+@startuml
+autonumber
+title MAC allocate 4 RB for SR, normal basic flow, 1st part
+
+participant "UE" as ue
+participant "PHY Adapterer" as phy
+participant "L2" as l2
+participant "L3" as l3
+
+note over ue, l2
+UE sends MSG1
+end note
+
+ue -> l2 : [**698.1**] RACH, RA-RNTI, preamble
+
+note over ue, l2
+Network sends MSG2 with 2 TTI advance to PHY
+end note
+
+l2 -> phy : [**698.3**] FAPI_DL_DCI_FORMAT_1A & FAPI_DLSCH_PDU, RA-RNTI
+l2 -> ue : [**698.5**] RAR, TC-RNTI
+
+note over ue, l2
+UE sends MSG3 in the 2nd UL SF after RAR received
+end note
+l2 -> phy : [**699.1**] FAPI_ULSCH (1 TTI advance)
+ue -> l2 : [**699.2**] MSG3 (RRC Connection Request), TC-RNTI
+phy -> l2 : [**699.2**] MSG3 CRC (0: Correct)
+
+note over ue, l2
+Network sends MSG4
+end note
+l2 -> phy : [**699.6**] FAPI_DL_DCI_FORMAT_1A & FAPI_DLSCH_PDU, TC-RNTI
+l2 -> ue : [**699.8**] Contention Resolution, TC-RNTI
+l2 --> phy : [**700.1**] FAPI_UCI_HARQ (Cfg PHY to recv HARQ)
+ue -> l2 : [**700.2**] HARQ ACK
+
+note over ue, l3
+Network sends RRC Setup.
+Which SFN/SF to send RRC setup in MAC depends on the time receiving RRC setup from L3
+end note
+
+l2 -> l3 : RRC Connection Request 
+... 
+
+l3 -> l2 : Create UE context (PDCP/RLC/MAC/PHY)
+l2 -> phy : PHY_UE_CONFIG_REQUEST (cfgMode = 1)
+phy -> l2 : PHY_UE_CONFIG_RESPONSE
+l2 -> l3 : Response
+l3 -> l2 : RRC Connection Setup
+
+l2 -> phy : [**704.1**] FAPI_DL_DCI_FORMAT_1A & FAPI_DLSCH_PDU, C-RNTI = TC-RNTI
+l2 -> ue : [**704.3**] RRC Connection Setup, C-RNTI
+l2 --> phy : [**704.6**] FAPI_UCI_HARQ
+ue -> l2 : [**704.7**] HARQ ACK (for RRC Connection Setup)
+
+note over ue, l3
+UE sends SR to request UL resurce for RRC Setup complete.
+which UL SFN and SF depends on srConfigIndex. 
+If srConfigIndex = 17, the SR periodicity is 20ms, send SR in UL SF 2
+If srConfigIndex = 72, the SR periodicity is 40ms, send SR in UL SF 7
+end note
+
+l2 --> phy : [**706.1**] FAPI_UCI_SR (Cfg PHY to recv SR)
+ue -> l2 : [**706.2**] SR
+l2 -> ue : [**706.8**] FAPI_UL_DCI_FORMAT_0 (4 RB)
+l2 -> phy : [**707.1**] FAPI_ULSCH
+ue -> l2 : [**707.2**] RRC Setup Complete
+phy -> l2 : [**707.2**] RRC Setup Complete CRC (0: Correct)
+l2 -> l3 : RRC Setup Complete
+l2 -> phy : [**707.4**] FAPI_DL_DCI_FORMAT_1A & FAPI_DLSCH_PDU
+l2 -> ue : [**707.6**] RLC ACK for RRC Setup Complete
+l2 -> ue : [**707.8**] FAPI_HI_PDU (HARQ ACK for RRC Setup Complete)
+l2 --> phy : [**708.1**] FAPI_UCI_HARQ
+ue --> l2 : [**708.2**] HARQ ACK for RLC ACK received in 707.6
+
+... 
+
+
+@enduml

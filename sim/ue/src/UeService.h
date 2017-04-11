@@ -15,7 +15,7 @@
 #include "UdpSocket.h"
 #include "SfnSfManager.h"
 #include "SelectSocketSet.h"
-#include "UeMacAPI.h"
+#include "PhyMacAPI.h"
 
 namespace ue {
 
@@ -36,7 +36,7 @@ namespace ue {
         UInt8 m_recvBuffer[SOCKET_BUFFER_LENGTH];
 
         net::SelectSocketSet* m_selectSocketSet;
-        UeMacAPI* m_ueMacAPI;
+        PhyMacAPI* m_phyMacAPI;
     };
 
     inline void UeService::postEvent() {

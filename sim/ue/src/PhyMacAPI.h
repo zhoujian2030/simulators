@@ -1,5 +1,5 @@
 /*
- * UeMacAPI.h
+ * PhyMacAPI.h
  *
  *  Created on: Nov 04, 2016
  *      Author: j.zhou
@@ -27,15 +27,16 @@
 namespace ue {
 
     class UeScheduler;
+    class StsCounter;
 
 #ifdef OS_LINUX
-    class UeMacAPI : public net::UdpSocketListener {
+    class PhyMacAPI : public net::UdpSocketListener {
 #else
-	class UeMacAPI {
+	class PhyMacAPI {
 #endif
     public:
-        UeMacAPI(UInt8* theBuffer);
-        virtual ~UeMacAPI();
+        PhyMacAPI(UInt8* theBuffer);
+        virtual ~PhyMacAPI();
 
 #ifdef OS_LINUX
         virtual void handleRecvResult(net::UdpSocket* theSocket, int numOfBytesRecved);
@@ -47,10 +48,17 @@ namespace ue {
 #endif
         void handleSubFrameInd(UInt16 sfnsf);
         void sendData();
+        void sendUeConfigResp();
 
     private:
 
         friend class UeTerminal;
+        friend class NWRetransmitRrcSetup;
+        friend class UENotSendRrcSetupComplete;
+        friend class NWRetransmitIdentityReq;
+        friend class UESuspending;
+        friend class UENotSendRlcAck;
+        friend class UESendRrcReestablishmentReq;
 
         void resetSendBuffer();
         UInt8* getRachBuffer();
@@ -58,11 +66,13 @@ namespace ue {
         UInt8* getCrcBuffer();
         UInt8* getHarqBuffer();        
         UInt8* getSrBuffer();
+        UInt8* getUeConfigMsgBuffer();
         void addRachDataLength(UInt16 length);
         void addSchDataLength(UInt16 length);
         void addCrcDataLength(UInt16 length);
         void addHarqDataLength(UInt16 length);
         void addSrDataLength(UInt16 length);
+        void addUeConfigMsgLength(UInt16 length);
 
         void addSchPduData(UInt8* theBuffer, UInt32 length);
 
@@ -73,7 +83,10 @@ namespace ue {
         UInt8 m_sf;
         UInt16 m_sfn;
 
+        BOOL m_isRunning;
+
         UeScheduler* m_ueScheduler;
+        StsCounter* m_stsCounter;
 
         UInt16 m_rachDataLength;
         UInt8 m_rachBuffer[SOCKET_BUFFER_LENGTH];
@@ -93,6 +106,9 @@ namespace ue {
         UInt16 m_schPduLength;
         UInt8 m_schPduBuffer[SOCKET_BUFFER_LENGTH];
 
+        UInt16 m_ueConfigMsgLength;
+        UInt8 m_ueConfigMsgBuffer[SOCKET_BUFFER_LENGTH];
+
 #ifdef OS_LINUX
         net::Socket::InetAddressPort m_l2Address;
         net::UdpSocket* m_txL2Socket;
@@ -100,57 +116,67 @@ namespace ue {
     };
 
     // ------------------------------------
-    inline UInt8* UeMacAPI::getRachBuffer() {
+    inline UInt8* PhyMacAPI::getRachBuffer() {
         return m_rachBuffer;
     }
 
     // ------------------------------------
-    inline UInt8* UeMacAPI::getSchBuffer() {
+    inline UInt8* PhyMacAPI::getSchBuffer() {
         return m_schBuffer;
     }
 
     // ------------------------------------
-    inline UInt8* UeMacAPI::getCrcBuffer() {
+    inline UInt8* PhyMacAPI::getCrcBuffer() {
         return m_crcBuffer;
     }
 
     // ------------------------------------
-    inline UInt8* UeMacAPI::getHarqBuffer() {
+    inline UInt8* PhyMacAPI::getHarqBuffer() {
         return m_harqBuffer;
     }
 
      // ------------------------------------
-    inline UInt8* UeMacAPI::getSrBuffer() {
+    inline UInt8* PhyMacAPI::getSrBuffer() {
         return m_srBuffer;
     }
 
+	// ------------------------------------
+	inline UInt8* PhyMacAPI::getUeConfigMsgBuffer() {
+	   return m_ueConfigMsgBuffer;
+	}
+
     // ------------------------------------
-    inline void UeMacAPI::addRachDataLength(UInt16 length) {
+    inline void PhyMacAPI::addRachDataLength(UInt16 length) {
         m_rachDataLength += length;
     }
 
     // ------------------------------------
-    inline void UeMacAPI::addSchDataLength(UInt16 length) {
+    inline void PhyMacAPI::addSchDataLength(UInt16 length) {
        m_schDataLength += length;
     }
 
     // ------------------------------------
-    inline void UeMacAPI::addCrcDataLength(UInt16 length) {
+    inline void PhyMacAPI::addCrcDataLength(UInt16 length) {
         m_crcDataLength += length;
     }
 
     // ------------------------------------
-    inline void UeMacAPI::addHarqDataLength(UInt16 length) {
+    inline void PhyMacAPI::addHarqDataLength(UInt16 length) {
         m_harqDataLength += length;
     }
 
     // ------------------------------------
-    inline void UeMacAPI::addSrDataLength(UInt16 length) {
+    inline void PhyMacAPI::addSrDataLength(UInt16 length) {
         m_srDataLength += length;
     }
 
+    // ------------------------------------
+    inline void PhyMacAPI::addUeConfigMsgLength(UInt16 length) {
+    	m_ueConfigMsgLength += length;
+    }
+
     // --------------------------------------
-    inline void UeMacAPI::addSchPduData(UInt8* theBuffer, UInt32 length) {
+    inline void PhyMacAPI::addSchPduData(UInt8* theBuffer, UInt32 length) {
         memcpy((void*)(m_schPduBuffer + m_schPduLength), (void*)theBuffer, length);
         m_schPduLength += length;
     }

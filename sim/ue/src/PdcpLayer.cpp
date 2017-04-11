@@ -29,12 +29,11 @@ PdcpLayer::~PdcpLayer() {
 
 // -------------------------------------
 void PdcpLayer::handleRxSrb(UInt8* buffer, UInt32 length) {
-    LOG_DBG(UE_LOGGER_NAME, "[%s], length = %d\n", __func__, length);
+	LOG_DBG(UE_LOGGER_NAME, "[%s], length = %d\n", __func__, length);
 
-    for (UInt16 j=0; j<length; j++) {
-        printf("%02x ", buffer[j]);
-    }
-    printf("\n"); 
+#ifdef OS_LINUX
+    LOG_BUFFER(buffer, length);
+#endif
 
     // remove one byte PDCP head for SRB
     m_rrcLayer->handleRxRRCMessage(&buffer[1], length-1);

@@ -1,0 +1,53 @@
+@startuml
+autonumber
+title UE not sends HARQ ACK for Identity Request
+
+participant "UE" as ue
+participant "PHY Adapter" as phy
+participant "L2" as l2
+participant "L3" as l3
+
+... continue ...
+
+note over ue, l2
+MAC schedules Identity Request when receives msg from RRC.
+UE send SR to request ul resource for sending identity response
+end note
+
+l3 -> l2 : Identity Request
+
+l2 -> phy : [**212.1**] FAPI_DL_DCI_FORMAT_1A & FAPI_DLSCH_PDU
+l2 -> ue : [**212.3**] Identity Request
+l2 --> phy : [**212.6**] FAPI_UCI_HARQ
+
+note over ue,l2 
+    UE not sends HARQ ACK, MAC retransmit the TB
+end note
+
+l2 -> phy : [**213.1**] FAPI_DL_DCI_FORMAT_1A & FAPI_DLSCH_PDU
+l2 -> ue : [**213.3**] Identity Request (1st HARQ retransmit)
+l2 --> phy : [**213.6**] FAPI_UCI_HARQ
+
+l2 -> phy : [**214.1**] FAPI_DL_DCI_FORMAT_1A & FAPI_DLSCH_PDU
+l2 -> ue : [**214.3**] Identity Request (2nd HARQ retransmit)
+l2 --> phy : [**214.6**] FAPI_UCI_HARQ
+
+...
+
+note over l2, l3
+L3 send start release procedure after timeout 
+(no Identity Response received)
+end note
+
+l3 -> l2 : Attach Reject 
+l3 -> l2 : RRC Release
+
+note over ue, l2
+    below is the same releasing procedure as normal case
+end note
+
+...
+
+ue -> l2 : [xxx.1] RACH, RA-RNTI, preamble
+
+@enduml

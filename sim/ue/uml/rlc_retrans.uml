@@ -1,0 +1,73 @@
+@startuml
+autonumber
+title UE not send RLC ACK for Attach Reject & RRC Release
+
+participant "UE" as ue
+participant "PHY Adapter" as phy
+participant "L2" as l2
+participant "L3" as l3
+
+...
+
+note over ue, l3
+estabilsh RRC connection and get UE IMSI by sending Identity Request, refer to chapter 5.1
+end note
+
+l2 -> l3 : Identity Response
+
+note over ue, l3
+Network sends Attach Reject & RRC Release after Identity Responose received
+end note
+
+l3 -> l2 : Attach Reject 
+l3 -> l2 : RRC Release
+
+l2 -> phy : [**214.4**] FAPI_DL_DCI_FORMAT_1A & FAPI_DLSCH_PDU
+l2 -> ue : [**214.6**] Attach Reject
+
+l2 -> phy : [**214.6**] FAPI_DL_DCI_FORMAT_1A & FAPI_DLSCH_PDU
+l2 -> ue : [**214.8**] RRC Release
+
+l2 --> phy : [**215.1**] FAPI_UCI_HARQ
+ue -> l2 : [**215.2**] HARQ ACK (for both attach reject and rrc release)
+
+note over ue, l2
+UE not send RLC ACK for Attach Reject (ack sn = 2) and RRC Release (ack sn = 3)
+RLC retransmit RRC Release (no Attach reject ??)
+end note
+
+l2 -> phy : [**219.7**] FAPI_DL_DCI_FORMAT_1A & FAPI_DLSCH_PDU
+l2 -> ue : [**219.9**] RRC Release (1st retransmit)
+
+l2 --> phy : [**220.6**] FAPI_UCI_HARQ
+ue -> l2 : [**220.7**] HARQ ACK (for rrc release)
+
+...
+
+l2 -> phy : [**224.8**] FAPI_DL_DCI_FORMAT_1A & FAPI_DLSCH_PDU
+l2 -> ue : [**225.0**] RRC Release (2nd retransmit)
+
+l2 --> phy : [**225.6**] FAPI_UCI_HARQ
+ue -> l2 : [**225.7**] HARQ ACK (for rrc release)
+
+...
+
+note over ue, l3
+Network delete ue context. (No PDCP_STATUS_IND received due to RLC ACK not received in RLC, timeout after 500ms)
+end note
+
+l3 -> l2 : Delete UE Context (PDCP/RLC/MAC/PHY)
+
+l2 -> phy : PHY_UE_CONFIG_REQUEST (cfgMode = 3)
+phy -> l2 : PHY_UE_CONFIG_RESPONSE
+phy -> ue : free resource
+
+note over ue
+Terminate the connection, 
+reset state to idle, prepare
+next RACH indication 
+end note
+
+ue -> l2 : [xxx.1] RACH, RA-RNTI, preamble
+
+@enduml

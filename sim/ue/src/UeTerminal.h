@@ -15,22 +15,25 @@
 
 namespace ue {
 
-    class UeMacAPI;
+    class PhyMacAPI;
     class UeScheduler;
     class HarqEntity;
     class RlcLayer;
     class PdcpLayer;
     class RrcLayer;
+    class StsCounter;
 
     class UeTerminal {
     public:
-        UeTerminal(UInt8 ueId, UInt16 raRnti, UeMacAPI* ueMacAPI);
+        UeTerminal(UInt8 ueId, UInt16 raRnti, PhyMacAPI* phyMacAPI, StsCounter* stsCounter);
         virtual ~UeTerminal();
 
         void reset();
+        virtual void resetChild();
 
-        void schedule(UInt16 sfn, UInt8 sf, UeScheduler* pUeScheduler);
+        BOOL schedule(UInt16 sfn, UInt8 sf, UeScheduler* pUeScheduler);
 
+        void handleCreateUeReq(UInt16 srConfigIndex);
         void handleDeleteUeReq();
         void handleDlDciPdu(FAPI_dlConfigRequest_st* pDlConfigHeader, FAPI_dciDLPduInfo_st* pDlDciPdu);
         void handleDlSchPdu(FAPI_dlConfigRequest_st* pDlConfigHeader, FAPI_dlSCHConfigPDUInfo_st* pDlSchPdu);
@@ -45,17 +48,17 @@ namespace ue {
 
         // ------------------------------------------
         // callback functions of dl harq process 
-        void allocateDlHarqCallback(UInt16 harqProcessNum, BOOL result);
+        virtual void allocateDlHarqCallback(UInt16 harqProcessNum, BOOL result);
         void dlHarqSchConfigCallback(UInt16 harqProcessNum, BOOL result);
         void dlHarqReceiveCallback(UInt16 harqProcessNum, UInt8* theBuffer, UInt32 byteLen, BOOL result);
-        void dlHarqResultCallback(UInt16 harqProcessNum, UInt8 ackFlag, BOOL firstAck, BOOL result);
+        virtual void dlHarqResultCallback(UInt16 harqProcessNum, UInt8 ackFlag, BOOL firstAck, BOOL result);
 
         // ------------------------------------------
         // callback functions of ul harq process
         void allocateUlHarqCallback(UInt16 harqId, BOOL result);
         void ulHarqSendCallback(UInt16 harqId, UInt8 numRb, UInt8 mcs, UInt8& ueState);
         // result TRUE: ack, FALSE: nack
-        void ulHarqResultCallback(UInt16 harqId, BOOL result, UInt8 ueState);
+        virtual void ulHarqResultCallback(UInt16 harqId, BOOL result, UInt8 ueState);
         void ulHarqTimeoutCallback(UInt16 harqId, UInt8 ueState);
 
         void handleDlConfigReq(FAPI_dlConfigRequest_st* pDlConfigReq);
@@ -80,6 +83,9 @@ namespace ue {
             RRC_SETUP_SCH_RECVD,
             RRC_SETUP_RECVD,
             RRC_SETUP_ACK_SENT,
+            RRC_SETUP_RETRANSMIT,
+
+            RRC_REJ_RECVD,
 
             RRC_SETUP_COMPLETE_SR_SENT,
 
@@ -89,8 +95,10 @@ namespace ue {
 
             RRC_SETUP_COMPLETE_DCI0_RECVD,  
             RRC_SETUP_COMPLETE_SENT,
-            RRC_SETUP_COMPLETE_ACK_RECVD,   //20
+            RRC_SETUP_COMPLETE_ACK_RECVD,   //21
             RRC_SETUP_COMPLETE_NACK_RECVD,
+
+            RRC_IDENTITY_REQ_RECVD,
 
             RRC_CONNECTED,
             RRC_RELEASING,
@@ -125,7 +133,7 @@ namespace ue {
             tddAckNackFeedbackMode = 0,  // bundling mode, from RRC setup
             periodicBSRTimer = 20, // from RRC setup
             reTxBsrTimer = 320,   // from RRC setup
-            msg4AckRespTimer = 30   // timer to wait response to RRC Request from RRC
+            msg4AckRespTimer = 1800   // timer to wait response to RRC Request from RRC, must be less than T300
         };
 
         struct RarUlGrant {
@@ -151,9 +159,9 @@ namespace ue {
 
         enum RRCTimer {
             // refer to SIB2, 36.331 7.2, 7.3
-            T300 = 1000,  // 1000ms
-            T301 = 1000,
-            T310 = 1000,
+            T300 = 2000,  // 2000ms
+            T301 = 2000,
+            T310 = 2000,
             N310 = 20,
             T311 = 1000,
             N311 = 1
@@ -202,13 +210,17 @@ namespace ue {
             UInt8 cause;
         };
 
-    private:
-        void scheduleRach(UeScheduler* pUeScheduler);
+    protected:
+        BOOL scheduleRach(UeScheduler* pUeScheduler);
         void scheduleMsg3(UeScheduler* pUeScheduler);
         void scheduleSR(UeScheduler* pUeScheduler);
         void scheduleDCCH(UeScheduler* pUeScheduler);
         void processDlHarq(UeScheduler* pUeScheduler);
         void processTimer(UeScheduler* pUeScheduler);
+
+        BOOL m_suspend;
+
+        UInt32 m_accessCount;
 
         // timer to wait RRC connection setup complete
         SInt32 m_t300Value;
@@ -223,26 +235,27 @@ namespace ue {
         void setSfnSfForMsg3();
 
         // timer to wait contention resolution after MSG3 sent
-        SInt8 m_contResolutionTValue;
+        SInt16 m_contResolutionTValue;
         void startContentionResolutionTimer();
         void stopContentionResolutionTimer();
         BOOL processContentionResolutionTimer();
 
         // timer to wait RRC Setup after MSG4 HARQ ACK sent
-        SInt8 m_rrcSetupTValue;
+        SInt16 m_rrcSetupTValue;
         void startRRCSetupTimer();
         void stopRRCSetupTimer();
         BOOL processRRCSetupTimer();
 
-        void buildMsg3Data();
+        virtual void buildMsg3Data();
         void buildMsg3WithRnti();
         void buildCrcData(UInt8 crcFlag);
         void buildRRCSetupComplete();
         void buildBSRAndData(BOOL isLongBSR = FALSE);
 
-        BOOL parseContentionResolutionPdu(UInt8* data, UInt32 pduLen);
+        virtual BOOL parseContentionResolutionPdu(UInt8* data, UInt32 pduLen);
 
-        BOOL parseRRCSetupPdu(UInt8* data, UInt32 pduLen);
+        UInt16 parseMacCCCHPdu(UInt8* data, UInt32 pduLen);
+        virtual void handleCCCHMsg(UInt16 rrcMsgType);
         void setSfnSfForSR(BOOL isRetransmitSR = FALSE);
         void requestUlResource();
 
@@ -251,7 +264,7 @@ namespace ue {
         HarqEntity* m_harqEntity;
 
         // timer to wait DCI0 after SR sent
-        SInt8 m_srTValue;
+        SInt16 m_srTValue;
         void startSRTimer();
         void stopSRTimer();
         BOOL isSRSent();
@@ -270,8 +283,8 @@ namespace ue {
         RlcLayer* m_rlcLayer; 
         RrcLayer* m_rrcLayer;
         PdcpLayer* m_pdcpLayer;
-        void rrcCallback(UInt32 msgType, RrcMsg* msg);
-        void rlcCallback(UInt8* statusPdu, UInt32 length);
+        virtual void rrcCallback(UInt32 msgType, RrcMsg* msg);
+        virtual void rlcCallback(UInt8* statusPdu, UInt32 length);
 
         BOOL m_triggerIdRsp;
         BOOL m_triggerRlcStatusPdu;
@@ -279,9 +292,11 @@ namespace ue {
 
         static const UInt8 m_ulSubframeList[10];
 
-        UeMacAPI* m_ueMacAPI;
+        PhyMacAPI* m_phyMacAPI;
         DlSchMsg* m_dlSchMsg;
         UInt8 m_ueId;
+
+        StsCounter* m_stsCounter;
 
         // for different UE, <m_raRnti, m_preamble> must be unique
         // m_raRnti could be the same with different preamble, not SUPPORTED yet 
@@ -301,6 +316,9 @@ namespace ue {
         UInt16 m_rachSfnDelay;
         BOOL m_firstRachSfnSet;
         BOOL m_firstRachSent;
+
+        UInt32 m_maxRachIntervalSfn;
+        UInt32 m_rachIntervalSfnCnt;
 
         // subframe in which to send MSG3
         // this can be calculated according the sfnsf received Rar 

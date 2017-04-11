@@ -1,0 +1,34 @@
+@startuml
+autonumber
+
+actor "User" as user
+participant "UeTerminal" as uet
+participant "DlHarqProcess" as dlhp
+
+user --> uet : PHY_DL_TX_REQUEST
+uet -> dlhp : receive CCCH data
+
+...
+
+dlhp -> uet: dlHarqReceiveCallback
+alt current state is MSG4_SCH_RECVD
+    uet -> uet ++ : parseContentionResolutionPdu
+    return result
+    uet -> uet : stopContentionResolutionTimer
+
+else RRC connection is not established yet
+    uet -> uet ++ : parseCCCHPdu
+    return msgType
+
+    alt msgType == 3 (RRC Setup)
+        uet -> uet : stopRRCSetupTimer
+        uet --> user : send SR to request UL resource \nfor RRC Setup Complete
+
+    else msgType == 2 (RRC Connection Reestablishment Reject)
+        uet -> uet : stopRRCSetupTimer
+        uet -> uet : release resource
+    end
+end
+
+
+@enduml

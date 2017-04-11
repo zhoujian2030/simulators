@@ -821,35 +821,35 @@ typedef struct FAPI_cellReConfig_stT
 /* --------------------------------------------- */
 
 /* UE CNFIG Possible Tags */
-#define     FAPI_HANDLE                                  100
-#define    FAPI_RNTI                                     101
-/* CQI CONFIG */
-#define    FAPI_CQI_PUCCH_RESOURCE_INDEX                 102
-#define    FAPI_CQI_PMI_CONFIG_INDEX                     103
-#define    FAPI_CQI_RI_CONFIG_INDEX                      104
-#define    FAPI_CQI_SIMULTANEOUS_ACK_NACK_CQI            105
-/* CQI CONFIG ENDS */
-/* ACK/NACK CONFIG */
-#define    FAPI_AN_REPETITION_FACTOR                     106
-#define    FAPI_AN_N1_PUCCH_AN_REP                       107
-#define    FAPI_TDD_ACK_NACK_FEEDBACK                    108 
-/* ACK/NACK CONFIG  Ends*/
-/* SRS CONFIG */
-#define    FAPI_SRS_BANDWIDTH                            109
-#define    FAPI_SRS_HOPPING_BANDWIDTH                    110
-#define    FAPI_FREQUENCY_DOMAIN_POSITION                111
-#define    FAPI_SRS_DURATION                             112
-#define    FAPI_ISRS_SRS_CONFIG_INDEX                    113
-#define    FAPI_TRANSMISSION_COMB                        114
-#define    FAPI_SOUNDING_REFERENCE_SYCLIC_SHIFT          115 
-/* SRS CONFIG  Ends */
-/* SR CONFIG */
-#define    FAPI_SR_PUCCH_RESOURCE_INDEX                  116
-#define    FAPI_SR_CONFIG_INDEX                          117
-/* SR CONFIG Ends */
-/* SPS CONFIG */
-#define   FAPI_SPS_DL_CONFIG_SCHD_INTERVAL               118
-#define   FAPI_SPS_DL_N1_PUCCH_AN_PERSISTENT             119
+//#define     FAPI_HANDLE                                  100
+//#define    FAPI_RNTI                                     101
+///* CQI CONFIG */
+//#define    FAPI_CQI_PUCCH_RESOURCE_INDEX                 102
+//#define    FAPI_CQI_PMI_CONFIG_INDEX                     103
+//#define    FAPI_CQI_RI_CONFIG_INDEX                      104
+//#define    FAPI_CQI_SIMULTANEOUS_ACK_NACK_CQI            105
+///* CQI CONFIG ENDS */
+///* ACK/NACK CONFIG */
+//#define    FAPI_AN_REPETITION_FACTOR                     106
+//#define    FAPI_AN_N1_PUCCH_AN_REP                       107
+//#define    FAPI_TDD_ACK_NACK_FEEDBACK                    108
+///* ACK/NACK CONFIG  Ends*/
+///* SRS CONFIG */
+//#define    FAPI_SRS_BANDWIDTH                            109
+//#define    FAPI_SRS_HOPPING_BANDWIDTH                    110
+//#define    FAPI_FREQUENCY_DOMAIN_POSITION                111
+//#define    FAPI_SRS_DURATION                             112
+//#define    FAPI_ISRS_SRS_CONFIG_INDEX                    113
+//#define    FAPI_TRANSMISSION_COMB                        114
+//#define    FAPI_SOUNDING_REFERENCE_SYCLIC_SHIFT          115
+///* SRS CONFIG  Ends */
+///* SR CONFIG */
+//#define    FAPI_SR_PUCCH_RESOURCE_INDEX                  116
+//#define    FAPI_SR_CONFIG_INDEX                          117
+///* SR CONFIG Ends */
+///* SPS CONFIG */
+//#define   FAPI_SPS_DL_CONFIG_SCHD_INTERVAL               118
+//#define   FAPI_SPS_DL_N1_PUCCH_AN_PERSISTENT             119
 /* SPS CONFIG  Ends*/
 
 /* UE Config parametrs which wiil be filled in FAPI_ueConfig_st */
@@ -987,7 +987,288 @@ typedef struct FAPI_cellReConfig_stT
 
     /* SPS Config Ends */
 
+/* add by lucas todo  */
+#define    FAPI_RNTI                                     121
+
+#define   FAPI_TRANSMISSION_MODE_PRESENT                 122
+#define   FAPI_TRANSMISSION_MODE                         123
+
+#define   FAPI_CQI_CONFIG_INFO_PRESENT                   124
+#define   FAPI_APERIODIC_CQI_CFG_PRESENT                 125
+#define   FAPI_APERIODIC_CQI_CFG_EN                      126
+#define   FAPI_APERIODIC_CQI_REPORT_MODE                 127
+#define   FAPI_PDSCH_EPRE_TO_UE_RS_RATIO                 128//????
+#define   FAPI_PERIODIC_CQI_CFG_PRESENT                  129
+#define   FAPI_PERIODIC_CQI_CFG_EN                       130
+#define   FAPI_CQI_PUCCH_RESOURCE_INDEX                  131
+#define   FAPI_CQI_PMI_CONFIG_INDEX                      132
+#define   FAPI_CQI_RI_CONFIG_INDEX                       133
+#define   FAPI_SIMULTANEOUS_ACK_NACK_AND_CQI             134
+#define   FAPI_CQI_FORMAT_INDICATOR_PERIODIC             135
+#define   FAPI_CQI_MASK_V920_EN				             136
+#define   FAPI_CQI_MASK_V920				             137
+#define   FAPI_PMI_RI_REPORT_V920_EN		             138
+#define   FAPI_PMI_RI_REPORT_V920			             139
+#define   FAPI_PERIODIC_RI_REPORT			             140
+#define   FAPI_K                                         141
+
+#define   FAPI_ACK_NACK_CONFIG_PRESENT                   142
+#define   FAPI_AN_REPETITION_FACTOR                      143
+#define   FAPI_AN_N1_PUCCH_AN_REP                        144
+#define   FAPI_TDD_ACK_NACK_FEEDBACK_MODE_EN             145
+#define   FAPI_TDD_ACK_NACK_FEEDBACK_MODE                146
+#define   FAPI_AN_REPETITION_FACTOR_EN                   147
+
+#define   FAPI_SRS_CONFIG_PRESENT                        148
+#define   FAPI_FREQ_DOMAIN_POSITION                      149
+#define   FAPI_SRS_CONFIG_INDEX                          150
+#define   FAPI_SRS_CYCLIC_SHIFT                          151
+#define   FAPI_SRS_DURATION                              152
+#define   FAPI_SRS_HOPPING_BANDWIDTH                     153
+#define   FAPI_SRS_BANDWIDTH                             154
+#define   FAPI_SRS_EN                                    155
+#define   FAPI_SRS_TRANSMISSION_COMB                     156
+
+#define   FAPI_SR_CONFIG_PRESENT                         157
+#define   FAPI_SR_CONFIG_INDEX                           158
+#define   FAPI_SR_PUCCH_RESOURCE_INDEX                   159
+#define   FAPI_SR_EN                                     160
+
+#define   FAPI_SPS_DL_CONFIG_PRESENT                     161
+#define   FAPI_SPS_DL_EN                                 162
+#define   FAPI_SPS_DL_CONFIG_SCHED_INTERVAL              163
+#define   FAPI_SPS_DL_N1_PUCCH_AN_PERSISTENT0            164
+#define   FAPI_SPS_DL_N1_PUCCH_AN_PERSISTENT1            165
+#define   FAPI_SPS_DL_N1_PUCCH_AN_PERSISTENT2            166
+#define   FAPI_SPS_DL_N1_PUCCH_AN_PERSISTENT3            167
+
+#define   FAPI_PUSCH_CONFIG_INFO_PRESENT                 168
+#define   FAPI_PUSCH_CONFIG_BETAOFFSET_ACK_INDEX         169
+#define   FAPI_PUSCH_CONFIG_BETAOFFSET_RI_INDEX          170
+#define   FAPI_PUSCH_CONFIG_BETAOFFSET_CQI_INDEX         171
+
 /* -------------------------------   */
+
+/* UE Config parametrs which wiil be filled in FAPI_ueConfig_st */
+typedef union FAPI_ueConfigParam_unT
+{
+    /* An opaque handling to associate the received information in
+    RX.indication */
+
+    /* uint32_t  handle; */
+
+    /* The RNTI used for identifying the UE when receiving the PDU.
+    Value: 1 . 65535. */
+
+    uint16_t  rnti;
+
+    uint16_t transModePresent;
+    /*
+        TX_MODE_ATTACH_NOT_COMPLETE = 0,
+        TX_MODE_1 = 1,
+        TX_MODE_2,
+        TX_MODE_3,
+        TX_MODE_4,
+        TX_MODE_5,
+        TX_MODE_6,
+        TX_MODE_7,
+        TX_MODE_8,
+        INVALID_TX_MODE
+        */
+    uint16_t transMode; /* UE ¡ä?¨º??¡ê¨º????¡§¨¢?DCI?¡ê¨º?¡ê????¡Â????o¨ª¨ª¡§1yPDCCHD?¨¢?¨ª¡§?a¦Ì?PDSCH¨ºy?Y¡ä?¨º?¡¤?¨º? */
+
+    /* CQI Config */
+
+    uint16_t cqiCfgPresent;
+
+    uint16_t aperiodicCqiCfgPresent;
+
+    uint16_t aperiodicCqiCfgEn;
+
+    /*
+    CQI_MODE_1_0 =10,
+    CQI_MODE_1_1=11,
+    CQI_MODE_1_2=12,
+    CQI_MODE_2_0=20,
+    CQI_MODE_2_1=21,
+    CQI_MODE_2_2=22,
+    CQI_MODE_3_0=30,
+    CQI_MODE_3_1=31,
+    CQI_MODE_INVALID = 255
+    */
+    uint16_t aperiodicCqiReportMode;
+
+    /* -3~6 */
+    uint16_t pdschEpreToUeRsRatio;
+
+    uint16_t periodicCqiCfgPresent;
+
+    uint16_t periodicCqiCfgEn;
+
+    /* PUCCH resource for periodc CQI reporting
+    Value: 0 . 1185 */
+
+    uint16_t  cqiPucchResourceIndex;
+
+    /* The periodic PMI reporting configuration.
+    Value: 0 . 315. */
+
+    uint16_t  cqiPmiConfigIndex;
+
+    /* The periodic RI reporting configuration.
+    Value: 0 . 965. */
+
+    uint16_t  cqiRiConfigIndex;
+
+    /* Indicates if simultaneous transmission of CQI and ACK/NACK is allowed.
+    Value:
+    0: no PUCCH Format 2a/2b
+    1: PUCCH Format 2a/2b can be used */
+
+    uint16_t  simultaneousAckNackAndCqi;
+
+    /* 0: PERIODIC_WIDEBAND
+     * 1: PERIODIC_SUBBAND
+     * */
+    uint16_t cqiformatIndicatorPeriodic;
+
+    uint16_t cqiMask_v920_En;
+
+    /* true
+     * false
+     * */
+    uint16_t cqiMask_v920;
+
+    uint16_t pmiRiReport_V920_En;
+    /* true
+     * false
+     * */
+    uint16_t pmiRiReport_V920;
+
+    /* 1~4 */
+    uint16_t cqiformatIndicatorPeriodic_subband_k;
+
+    /* CQI Config ENDS */
+
+    /* ACK/NACK Config */
+    uint16_t ackNAckConfigPresent;
+
+    /* The ACK/NACK repetition  factor.
+    Value: 2,4,6 */
+
+    uint16_t   ackNacknRepetitionFactor;
+
+    /* The ACK/NACK repetition PUCCH resource index.
+    Value: 0. 2047 */
+
+    uint16_t  anN1PUCCHANRep;
+
+    /* The TDD ACK/NACK Feedback Mode
+    Value:
+    0: bundling
+    1: multiplexing */
+
+    uint16_t   tddAckNackFeedbackMode;
+
+    uint16_t   tddAckNackFeedbackModeEn;
+
+    /* ACK/NACK Config Ends */
+
+    /* SRS Config */
+
+    uint16_t srsConfigPresent;
+
+    uint16_t srsConfigEn;
+
+    /*  SRS Bandwidth. This value is fixed for a UE and allocated in
+    RRC connection setup.
+    Value: 0 . 3. */
+
+    uint16_t   srSBandWidth;
+
+    /* Configures the frequency hopping on the SRS.
+    This value is fixed for a UE and allocated in RRC connection setup.
+    Value 0 . 3. */
+
+    uint16_t   srsHoppingBandwidth;
+
+    /* Frequency-domain position, NRRC This value is fixed for a UE and
+    allocated in RRC connection setup.
+    Value: 0 . 23. */
+
+    uint16_t   freqDomainPosition;
+
+    /* The duration of the SRS configuration
+    Value:
+    0: once
+    1: indefinite */
+
+    uint16_t   srsDuration;
+
+    /* Defines the periodicity and subframe location of the SRS.
+    SRS Configuration Index. This value is fixed for a UE and
+    allocated in RRC connection setup
+    Value: 0 . 644. */
+
+    uint16_t   srsConfigIndex;
+
+    /* Configures the frequency location of the SRS.
+    This value is fixed for a UE and allocated in RRC connection setup.
+    Value: 0 .  1 */
+
+    uint16_t   txComb;
+
+    /* Configures the SRS sequence generation.
+    This value is fixed for a UE and allocated in RRC connection setup.
+    Value: 0 . 7 */
+
+    uint16_t   soundingRefCyclicShift;
+    /* SRS Config Ends */
+
+    /* SR Config */
+    uint16_t srConfigPresent;
+
+    uint16_t srConfigEn;
+
+    /* Scheduling request PUCCH resource index
+    Value: 0 . 2047. */
+
+    uint16_t  srPucchResourceIndex;
+
+    /* The scheduling request configuration index.
+    Value: 0 . 157. */
+
+    uint16_t   srConfigIndex;
+
+    /* SR Config Ends */
+
+    /* SPS Config */
+    uint16_t spsDlConfigPresent;
+
+    uint16_t spsDlEn;
+
+    /* SPS Configuration Interval
+    Value: 10,20,32,40,64,80,128,160,320,640 */
+
+    uint16_t  spsDlConfigSchedInterval;
+
+    /* The SPS PUCCH AN Resource configuration.
+    The TLV can be repeated four times.
+    Value: 0 . 2047. */
+
+    uint16_t  spsDln1PUCCHANPersistent0;
+    uint16_t  spsDln1PUCCHANPersistent1;
+    uint16_t  spsDln1PUCCHANPersistent2;
+    uint16_t  spsDln1PUCCHANPersistent3;
+
+    /* SPS Config Ends */
+
+    uint16_t  uePuschCfgPresent;
+    uint16_t  betaOffsetACKIndex;  /* {0~15} */
+    uint16_t  betaOffsetRIIndex;   /* {0~15} ¡Á¡é¡êo13¡ê?14¡ê?15?¦Ì¡À¡ê¨¢??¡ä¨º1¨®?*/
+    uint16_t  betaOffsetCQIIndex;  /* {0~15}  ¡Á¡é¡êo0¡ê?1?¦Ì¡À¡ê¨¢??¡ä¨º1¨®? */
+
+}FAPI_ueConfigParam_un;
 
 /* UE Config structure */
 typedef struct FAPI_ueConfig_stT 
@@ -1001,9 +1282,56 @@ typedef struct FAPI_ueConfig_stT
 
     /* The Possible values can be of size uint16_t or uint32_t or uint8_t */
     /* For more details please see above parametrs wise in comment */ 
-    uint8_t   value[FAPI_VAR_SIZE(tagLen)];    
+//    uint8_t   value[FAPI_VAR_SIZE(tagLen)];
+    FAPI_ueConfigParam_un   ueConfigParam;
 
 }FAPI_ueConfig_st;
+
+/*  ------------------------------- */
+
+/* PHY UE CONFIG REQUEST: This defines the message body for
+ * PHY_UE_CONFIG_REQUEST.
+ * The message is only valid if semi-static configuration is kept in PHY.
+ */
+typedef struct FAPI_phyUeConfigRequest_stT
+{
+     uint8_t                numOfTlv;
+     uint16_t                ueIndex;
+     uint16_t				cfgMode; /* 1:Creat Ue Cfg; 2:Updata Ue Cfg;3:Release Ue */
+     FAPI_ueConfig_st       configtlvs[FAPI_VAR_SIZE(numOfTlv)];
+
+}FAPI_phyUeConfigRequest_st;
+
+/*  ------------------------------- */
+
+/* PHY UE CONFIG RESPONSE: This defines the message body for
+ * PHY_UE_CONFIG_RESPONSE
+ * The message is only valid if semi-static configuration is kept in PHY.
+ */
+
+typedef struct FAPI_phyUeConfigResp_stT
+{
+  /* Possible values are defined in FAPI_l1ErrorCodes_en. */
+    FAPI_l1ErrorCodes_en    errorCode;
+
+    /* Number of invalid or unsupported TLVs contained in the message body. */
+    uint8_t                 numOfInvalidOrUnsupportedTLV;
+
+    /* Number of missing TLVs contained in the message body.
+    If the PHY is in the CONFIGURED state this will always be 0. */
+    uint8_t                 numOfMissingTLV;
+
+/*+ SPR 9285*/
+    uint8_t                 padding;
+/*- SPR 9285*/
+    /* A list of invalid or unsupported TLVs .
+    each TLV is presented in its entirety. */
+    FAPI_ueConfig_st        listOfTLV[FAPI_VAR_SIZE(numOfInvalidOrUnsupportedTLV)];
+
+    /* A list of missing TLVs . each TLV is presented in its entirety */
+    FAPI_ueConfig_st        listOfMissingTlv[FAPI_VAR_SIZE(numOfTlv)];
+
+}FAPI_phyUeConfigResp_st;
 
 /* --------------------------------- */
 
@@ -3584,37 +3912,6 @@ typedef struct FAPI_ueConfigRequest_stT
      FAPI_ueConfig_st       tlvs[FAPI_VAR_SIZE(numOfTlv)];
 
 }FAPI_ueConfigRequest_st;
-
-/*  ------------------------------- */
-
-/* PHY UE CONFIG RESPONSE: This defines the message body for
- * PHY_UE_CONFIG_RESPONSE
- * The message is only valid if semi-static configuration is kept in PHY.
- */
-
-typedef struct FAPI_phyUeConfigResp_stT
-{
-  /* Possible values are defined in FAPI_l1ErrorCodes_en. */
-    FAPI_l1ErrorCodes_en    errorCode; 
-
-    /* Number of invalid or unsupported TLVs contained in the message body. */
-    uint8_t                 numOfInvalidOrUnsupportedTLV;
-
-    /* Number of missing TLVs contained in the message body. 
-    If the PHY is in the CONFIGURED state this will always be 0. */
-    uint8_t                 numOfMissingTLV;
-
-/*+ SPR 9285*/
-    uint8_t                 padding;
-/*- SPR 9285*/
-    /* A list of invalid or unsupported TLVs . 
-    each TLV is presented in its entirety. */
-    FAPI_ueConfig_st        listOfTLV[FAPI_VAR_SIZE(numOfInvalidOrUnsupportedTLV)];
-    
-    /* A list of missing TLVs . each TLV is presented in its entirety */
-    FAPI_ueConfig_st        listOfMissingTlv[FAPI_VAR_SIZE(numOfTlv)];
-
-}FAPI_phyUeConfigResp_st;
 
 /*  ------------------------------- */
 

@@ -11,6 +11,8 @@
 #include "SfnSfManager.h"
 #include "StsCounter.h"
 
+UInt8 gLogLevel = 2;
+
 using namespace ue;
 
 int main(int argc, char* argv[]) {
