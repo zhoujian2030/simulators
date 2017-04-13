@@ -10,7 +10,7 @@
 #ifdef OS_LINUX
 #include "CLogger.h"
 #else
-#include "../sysService/common/logger.h"
+#include "logger.h"
 #endif
 
 using namespace ue;
@@ -129,11 +129,11 @@ void StsCounter::show() {
 		sumLength += varDataLen;
 	}
 	if (m_identityReqRecvd > 0) {
-		varDataLen = sprintf(stsData + sumLength, " Num Identity Req recvd:   %d\n", m_identityReqRecvd);
+		varDataLen = sprintf(stsData + sumLength, " Num Identity Req recvd:  %d\n", m_identityReqRecvd);
 		sumLength += varDataLen;
 	}
 	if (m_identityReqRetransmit > 0) {
-		varDataLen = sprintf(stsData + sumLength, " Num Identity Req retrans: %d\n", m_identityReqRetransmit);
+		varDataLen = sprintf(stsData + sumLength, " Num Identity Req retran: %d\n", m_identityReqRetransmit);
 		sumLength += varDataLen;
 	}
 	if (m_identityRespSent > 0) {

@@ -11,7 +11,7 @@
 #ifdef OS_LINUX
 #include "CLogger.h"
 #else
-#include "../sysService/common/logger.h"
+#include "logger.h"
 #endif
 #include "PhyMacAPI.h"
 #include "UeScheduler.h"
@@ -54,9 +54,9 @@ UeTerminal::UeTerminal(UInt8 ueId, UInt16 raRnti, PhyMacAPI* phyMacAPI, StsCount
     m_triggerRlcStatusPdu = FALSE;
 
 #ifdef OS_LINUX
-    m_rachSfnDelay = (m_ueId - 1) / 2 + 0;
+    m_rachSfnDelay = (m_ueId - 1) / 2 + 2;
 #else
-    m_rachSfnDelay = (m_ueId - 1) / 2 + 250;
+    m_rachSfnDelay = ((m_ueId - 1) / 2 + 250) % 1024;
 #endif
     m_firstRachSent = FALSE;
     m_firstRachSfnSet = FALSE;

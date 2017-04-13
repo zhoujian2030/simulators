@@ -14,7 +14,7 @@
 #ifdef OS_LINUX
 #include "CLogger.h"
 #else
-#include "../sysService/common/logger.h"
+#include "logger.h"
 #endif
 
 #include "NWRetransmitRrcSetup.h"

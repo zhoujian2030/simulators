@@ -9,8 +9,8 @@
 #ifdef OS_LINUX
 #include "CLogger.h"
 #else
-#include "../sysService/common/logger.h"
-#include "../osAdapter/common/pktQueue.h"
+#include "logger.h"
+#include "pktQueue.h"
 #endif
 #include "UeScheduler.h"
 #include "StsCounter.h"
@@ -22,7 +22,7 @@ using namespace net;
 #endif
 
 #ifndef OS_LINUX
-extern "C" void* InitUePhyUeSim() {
+extern "C" void* InitUePhySim() {
 	LOG_DBG(UE_LOGGER_NAME, "[%s], Entry\n", __func__);
 	PhyMacAPI* pPhyMacAPI = new PhyMacAPI(0);
 	return (void*)pPhyMacAPI;

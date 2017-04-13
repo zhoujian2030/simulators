@@ -75,4 +75,211 @@ unsigned long UeService::run() {
     return 0;
 }
 
+#else
+
+extern "C" {
+
+#include <stdio.h>
+#include <string.h>
+
+#include "logger.h"
+#include "sfnMgr.h"
+#include "socketAdapter.h"
+#include "task.h"
+#include "msgQueue.h"
+#include "pktQueue.h"
+#include "platform.h"
+#include "osCommon.h"
+#include "msgMemMgr.h"
+#include "logMgr.h"
+#include "userTimer.h"
+#include "lteTypes.h"
+#include "UeService.h"
+
+//#define CCS_SIM
+extern void HandleSubFrameInd(void* phyUeSim, UInt16 sfnsf);
+extern void HandleDlDataRequest(void* phyUeSim, UInt8* buffer, SInt32 length);
+extern void* InitUePhySim();
+
+#ifdef CCS_SIM
+void MainEntryFun() {
+	//UInt8 msgBuf[3000] = {0};
+	//Int bytesRead = 0;
+	void* pPhyUeSim = InitUePhySim();
+	UInt16 sfn = 1;
+	UInt8 sf = 1;
+	UInt16 sfnsf = (sfn << 4) | sf;
+	HandleSubFrameInd(pPhyUeSim, sfnsf);
+}
+#endif
+
+/*
+ *
+ */
+SInt32 RecvMsgFromQmss(void* msgBuf_p, Int32 qmssId)
+{
+    SInt32 bytesRead = 0;
+	UInt8* pTempBuffer = PNULL;
+	void* pTempQmssFd = PNULL;
+	UInt32 count = 0;
+
+	if((bytesRead = RecvMsgFromQmssQ(qmssId, Qmss_Type_RxHand, &pTempBuffer, &pTempQmssFd)) <= 0)
+	{
+		LOG_ERROR(MODULE_ID_OS_ADAPTER,
+					   "phySim: [%s], RecvMsgFromQmssQ bytesRead[%d], rxQmssId[%d] failure.\n",
+					   __func__, bytesRead, qmssId);
+		count = 0;
+		return count;
+	}
+
+	memcpy(msgBuf_p, pTempBuffer, bytesRead);
+
+	callbackQmssFd(pTempQmssFd);
+
+    return bytesRead;
+}
+
+extern S_SysSfn  gSysSfn;
+volatile BOOL gSfnSfUpdated = FALSE;
+BOOL gBroadcastRecvd = FALSE;
+BOOL gCellConfigRecvd = FALSE;
+void UePhySimTask(void)
+{
+	LOG_DBG(MODULE_ID_LAYER_MGR, "[%s], Entry\n", __func__);
+	UInt32 phySimHandlerEventInfo = 0;
+	UInt8 msgBuf[3000] = {0};
+	Int bytesRead = 0;
+	void* pPhyUeSim = InitUePhySim();
+
+	while(1)
+	{
+		if(0 >= (UInt32)RecvMsg(&PhySimHandlerMsgQ_g, (void*)&phySimHandlerEventInfo, sizeof(UInt32), WAIT_FOREVER))
+		{
+			LOG_ERROR(MODULE_ID_LAYER_MGR,
+					"phySim: [%s] RecvMsg phySimHandlerEventInfo[0x%08x] failure.\n",
+					__func__, phySimHandlerEventInfo);
+		}
+
+		UInt16 sfnsf = (gSysSfn.sfn << 4) | gSysSfn.sf;
+		bytesRead = 0;
+
+		if (gCellConfigRecvd) {
+
+			UInt32 count = 0;
+			UInt8 n = 0;
+
+			// Receive DL Config request
+			count = GetCountOfQmssQ(QMSS_RX_HAND_LAYER2C_FROM_L2_BUF_REP, Qmss_Type_RxHand);
+
+			if (count > 0) {
+				while ((n < count) && (n < 10)) {
+					if( 0 != (bytesRead = RecvMsgFromQmss((void *)msgBuf, QMSS_RX_HAND_LAYER2C_FROM_L2_BUF_REP)))
+					{
+						if (gBroadcastRecvd) {
+							LOG_DBG(MODULE_ID_LAYER_MGR, "[%s], recv DL Config request\n", __func__);
+							HandleDlDataRequest(pPhyUeSim, msgBuf, bytesRead);
+						}
+					}
+
+					n++;
+				}
+			}
+
+			// Receive DL Data request
+			count = GetCountOfQmssQ(QMSS_RX_HAND_LAYER2C_FROM_LAYER2D_UL_MAC_CE, Qmss_Type_RxHand);
+			n = 0;
+
+			if (count > 0) {
+				while ((n < count) && (n < 10)) {
+					if( 0 != (bytesRead = RecvMsgFromQmss((void *)msgBuf, QMSS_RX_HAND_LAYER2C_FROM_LAYER2D_UL_MAC_CE)))
+					{
+						if (!gBroadcastRecvd) {
+							gBroadcastRecvd = TRUE;
+						} else {
+							if (gCellConfigRecvd) {
+								LOG_DBG(MODULE_ID_LAYER_MGR, "[%s], recv DL Data request\n", __func__);
+								HandleDlDataRequest(pPhyUeSim, msgBuf, bytesRead);
+							}
+						}
+					}
+
+					n++;
+				}
+			}
+
+			// Receive UL Config / UL DCI / HI request
+			count = GetCountOfQmssQ(QMSS_RX_HAND_LAYER2D_FROM_CMAC_CMAC_HARQ_ACK, Qmss_Type_RxHand);
+			n = 0;
+			if (count > 0) {
+				while ((n < count) && (n < 10)) {
+					if( 0 != (bytesRead = RecvMsgFromQmss((void *)msgBuf, QMSS_RX_HAND_LAYER2D_FROM_CMAC_CMAC_HARQ_ACK)))
+					{
+						LOG_DBG(MODULE_ID_LAYER_MGR, "[%s], recv UL Config / HI/DCI0 / UE Config Request\n", __func__);
+						HandleDlDataRequest(pPhyUeSim, msgBuf, bytesRead);
+					}
+
+					n++;
+				}
+			}
+		}
+
+		if (!gCellConfigRecvd) {
+			// Receive UE Config Request / Cell Config Request / start phy request
+			if (GetCountOfQmssQ(QMSS_RX_HAND_LAYER2D_FROM_CMAC_CMAC_HARQ_ACK, Qmss_Type_RxHand) > 0) {
+				if( 6 == (bytesRead = RecvMsgFromQmss((void *)msgBuf, QMSS_RX_HAND_LAYER2D_FROM_CMAC_CMAC_HARQ_ACK)))
+				{
+					LOG_INFO(MODULE_ID_LAYER_MGR, "[%s], recv PHY_START_REQUEST from qmss QMSS_RX_HAND_LAYER2D_FROM_CMAC_CMAC_HARQ_ACK\n", __func__);
+					gCellConfigRecvd = TRUE;
+				}
+			}
+		}
+
+		if (gBroadcastRecvd && gCellConfigRecvd) {
+			HandleSubFrameInd(pPhyUeSim, sfnsf);
+		}
+
+	}
+}
+
+Int32 InitSimulator()
+{
+	Int32 i = 0;
+    InitUserQueueHandle(&l2LogMsgQueue_g, sizeof(S_LogFormat), (Uint32)LOG_TASK_RX_MSG_NUM, &gLogMsgPtrQueue[0]);
+    for(i = 0; i < LOG_TASK_RX_MSG_NUM; i++)
+    {
+    	gLogMsgPtrQueue[i] = (PTR)&gLogFormatBuf[i];
+    }
+
+	/* creat mailbox/queue */
+    if(RET_SUCCESS != CreateMsgQueue(&PhySimLogMsgQ_g, (UInt32)0, (UInt32)Phy_Sim_Handler_Msg_Size, (UInt32)Phy_Sim_Handler_Msg_Num))
+    {
+    	LOG_ERROR(MODULE_ID_LAYER_MGR,"[%s], create PhySimLogMsgQ_g failure.\n", __func__);
+    	return RET_FAIL;
+    }
+    if(RET_SUCCESS != CreateMsgQueue(&PhySimHandlerMsgQ_g, (UInt32)0,(UInt32)Phy_Sim_Handler_Msg_Size,(UInt32)Phy_Sim_Handler_Msg_Num))
+    {
+    	LOG_ERROR(MODULE_ID_LAYER_MGR,"[%s], create PhySimHandlerMsgQ_g failure\n", __func__);
+    	return RET_FAIL;
+    }
+
+	/* creat task */
+    PhySimLogTask_g = CreateTask((UInt32)Phy_Sim_Log_Task_Priority, (UInt32)Phy_Sim_Log_Task_Stack_Size, PhySimLogTaskStack_g, (void*)ExportLogInfo);
+	PhySimTask_g = CreateTask((UInt32)Phy_Sim_Task_Priority, (UInt32)Phy_Sim_Task_Stack_Size, PhySimTaskStack_g, (void*)UePhySimTask);
+
+	/* active task */
+	if(RET_SUCCESS != ActiveTask(&PhySimLogTask_g))
+	{
+		LOG_ERROR(MODULE_ID_LAYER_MGR,"phySim: [%s] ActiveTask PhySimLogTask_g failure.\n", __func__);
+	}
+	if(RET_SUCCESS != ActiveTask(&PhySimTask_g))
+	{
+		LOG_ERROR(MODULE_ID_LAYER_MGR,"phySim: [%s] ActiveTask PhySimTask_g failure.\n", __func__);
+	}
+
+
+	return RET_SUCCESS;
+}
+
+} // extern "C"
+
 #endif
