@@ -55,14 +55,15 @@ UeTerminal::UeTerminal(UInt8 ueId, UInt16 raRnti, PhyMacAPI* phyMacAPI, StsCount
 
 #ifdef OS_LINUX
     m_rachSfnDelay = (m_ueId - 1) / 2 + 2;
+    m_maxRachIntervalSfn = 0; 
 #else
     m_rachSfnDelay = ((m_ueId - 1) / 2 + 250) % 1024;
+    m_maxRachIntervalSfn = 5; // 10 sfn = 100ms
 #endif
     m_firstRachSent = FALSE;
     m_firstRachSfnSet = FALSE;
 
     m_rachIntervalSfnCnt = 0;
-    m_maxRachIntervalSfn = 5; // 10 sfn = 100ms
 
     sprintf(m_uniqueId, "[%02x.%04x.%04x]", m_ueId, m_raRnti, 0xffff);
     //LOG_DBG(UE_LOGGER_NAME, "[%s], %s\n",  __func__, m_uniqueId);
@@ -1292,6 +1293,21 @@ void UeTerminal::dlHarqResultCallback(UInt16 harqProcessNum, UInt8 ackFlag, BOOL
             pTddHarqPduInd->harqBuffer[0] = ackFlag;
             pTddHarqPduInd->harqBuffer[1] = 0;
 
+            if (m_state == MSG4_RECVD) {
+                // TODO MAC will not check harq value for MSG4, just take all value as ACK
+                //pTddHarqPduInd->harqBuffer[0] = 4;
+                m_state = MSG4_ACK_SENT;
+                this->startRRCSetupTimer();
+            } else if (m_state == RRC_SETUP_RECVD) {
+                //pTddHarqPduInd->harqBuffer[0] = 4;
+                m_state = RRC_SETUP_ACK_SENT;
+                this->setSfnSfForSR();
+            } else if (m_state == RRC_REJ_RECVD) {
+            	m_state = WAIT_TERMINATING;
+            } else {
+                // TODO                
+            }
+
             msgLen += sizeof(FAPI_tddHarqPduIndication_st);
             pL1Api->msgLen += msgLen;
 
@@ -1300,18 +1316,6 @@ void UeTerminal::dlHarqResultCallback(UInt16 harqProcessNum, UInt8 ackFlag, BOOL
                 m_phyMacAPI->addHarqDataLength(FAPI_HEADER_LENGTH + harqHeaderLen);
                 pL1Api->msgLen += harqHeaderLen;
             }       
-            
-            if (m_state == MSG4_RECVD) {
-                m_state = MSG4_ACK_SENT;
-                this->startRRCSetupTimer();
-            } else if (m_state == RRC_SETUP_RECVD) {
-                m_state = RRC_SETUP_ACK_SENT;
-                this->setSfnSfForSR();
-            } else if (m_state == RRC_REJ_RECVD) {
-            	m_state = WAIT_TERMINATING;
-            } else {
-                // TODO                
-            }
         } else {
             FAPI_tddHarqPduIndication_st* pTddHarqPduInd = (FAPI_tddHarqPduIndication_st*)&pHarqInd->harqPduInfo[pHarqInd->numOfHarq - 1]; 
             pTddHarqPduInd->numOfAckNack += 1;   
