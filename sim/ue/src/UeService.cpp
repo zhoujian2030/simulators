@@ -143,6 +143,7 @@ extern S_SysSfn  gSysSfn;
 volatile BOOL gSfnSfUpdated = FALSE;
 BOOL gBroadcastRecvd = FALSE;
 BOOL gCellConfigRecvd = FALSE;
+BOOL gStartTest = FALSE;
 void UePhySimTask(void)
 {
 	LOG_DBG(MODULE_ID_LAYER_MGR, "[%s], Entry\n", __func__);
@@ -175,7 +176,7 @@ void UePhySimTask(void)
 				while ((n < count) && (n < 10)) {
 					if( 0 != (bytesRead = RecvMsgFromQmss((void *)msgBuf, QMSS_RX_HAND_LAYER2C_FROM_L2_BUF_REP)))
 					{
-						if (gBroadcastRecvd) {
+						if (gBroadcastRecvd && gStartTest) {
 							LOG_DBG(MODULE_ID_LAYER_MGR, "[%s], recv DL Config request\n", __func__);
 							HandleDlDataRequest(pPhyUeSim, msgBuf, bytesRead);
 						}
@@ -196,7 +197,7 @@ void UePhySimTask(void)
 						if (!gBroadcastRecvd) {
 							gBroadcastRecvd = TRUE;
 						} else {
-							if (gCellConfigRecvd) {
+							if (gStartTest) {
 								LOG_DBG(MODULE_ID_LAYER_MGR, "[%s], recv DL Data request\n", __func__);
 								HandleDlDataRequest(pPhyUeSim, msgBuf, bytesRead);
 							}
@@ -207,18 +208,22 @@ void UePhySimTask(void)
 				}
 			}
 
-			// Receive UL Config / UL DCI / HI request
-			count = GetCountOfQmssQ(QMSS_RX_HAND_LAYER2D_FROM_CMAC_CMAC_HARQ_ACK, Qmss_Type_RxHand);
-			n = 0;
-			if (count > 0) {
-				while ((n < count) && (n < 10)) {
-					if( 0 != (bytesRead = RecvMsgFromQmss((void *)msgBuf, QMSS_RX_HAND_LAYER2D_FROM_CMAC_CMAC_HARQ_ACK)))
-					{
-						LOG_DBG(MODULE_ID_LAYER_MGR, "[%s], recv UL Config / HI/DCI0 / UE Config Request\n", __func__);
-						HandleDlDataRequest(pPhyUeSim, msgBuf, bytesRead);
-					}
+			if (gStartTest) {
+				// Receive UL Config / UL DCI / HI request
+				count = GetCountOfQmssQ(QMSS_RX_HAND_LAYER2D_FROM_CMAC_CMAC_HARQ_ACK, Qmss_Type_RxHand);
+				n = 0;
+				if (count > 0) {
+					while ((n < count) && (n < 10)) {
+						if( 0 != (bytesRead = RecvMsgFromQmss((void *)msgBuf, QMSS_RX_HAND_LAYER2D_FROM_CMAC_CMAC_HARQ_ACK)))
+						{
+							if (gBroadcastRecvd) {
+								LOG_DBG(MODULE_ID_LAYER_MGR, "[%s], recv UL Config / HI/DCI0 / UE Config Request\n", __func__);
+								HandleDlDataRequest(pPhyUeSim, msgBuf, bytesRead);
+							}
+						}
 
-					n++;
+						n++;
+					}
 				}
 			}
 		}
@@ -232,9 +237,19 @@ void UePhySimTask(void)
 					gCellConfigRecvd = TRUE;
 				}
 			}
+		} else {
+			if (!gStartTest) {
+				if (GetCountOfQmssQ(QMSS_RX_HAND_LAYER2D_FROM_CMAC_CMAC_HARQ_ACK, Qmss_Type_RxHand) > 0) {
+					if( 10 == (bytesRead = RecvMsgFromQmss((void *)msgBuf, QMSS_RX_HAND_LAYER2D_FROM_CMAC_CMAC_HARQ_ACK)))
+					{
+						LOG_INFO(MODULE_ID_LAYER_MGR, "[%s], recv Start Test req\n", __func__);
+						gStartTest = TRUE;
+					}
+				}
+			}
 		}
 
-		if (gBroadcastRecvd && gCellConfigRecvd) {
+		if (gBroadcastRecvd && gStartTest) {
 			HandleSubFrameInd(pPhyUeSim, sfnsf);
 		}
 

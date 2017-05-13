@@ -116,13 +116,13 @@ namespace ue {
             MIN_RAR_LENGTH = 7,
             CONTENTION_RESOLUTION_LENGTH = 7,
             MSG3_LENGTH = 22,
-            RRC_SETUP_COMPLETE_LENGTH = 504,  //TBD, depends on numRb allocated
-            BSR_MSG_LENGTH = 61, //TBD, 1 RB
+            RRC_SETUP_COMPLETE_LENGTH = 85,  //TBD, depends on numRb allocated, 4 RB, mcs = 10
+            BSR_MSG_LENGTH = 18, //TBD, 1 RB, mcs = 10
 
             NUM_UL_HARQ_PROCESS = 2,    // for TDD UL/DL CONFIG 2
             NUM_DL_HARQ_PROCESS = 10,
 
-            IDENTITY_MSG_LENGTH = 100
+            IDENTITY_MSG_LENGTH = 41  // 2RB, mcs = 10
         };
 
         enum {
@@ -285,6 +285,8 @@ namespace ue {
         PdcpLayer* m_pdcpLayer;
         virtual void rrcCallback(UInt32 msgType, RrcMsg* msg);
         virtual void rlcCallback(UInt8* statusPdu, UInt32 length);
+
+        UInt16 getUlTBSize(UInt8 numRb, UInt8 mcs);
 
         BOOL m_triggerIdRsp;
         BOOL m_triggerRlcStatusPdu;

@@ -597,7 +597,7 @@ void UeTerminal::buildMsg3Data() {
 
     pUlDataPduInd->rnti = m_rnti; 
     pUlDataPduInd->length = MSG3_LENGTH;
-    pUlDataPduInd->ulCqi = 2;   //TBD
+    pUlDataPduInd->ulCqi = 160;   //TBD
     pUlDataPduInd->timingAdvance = m_ta;
     pUlDataPduInd->dataOffset = 1;  // TBD
 
@@ -627,7 +627,7 @@ void UeTerminal::buildMsg3Data() {
     LOG_INFO(UE_LOGGER_NAME, "[%s], %s, compose MSG3 (RRC Connection Connection Request), msgLen = %d\n",  __func__, m_uniqueId, pL1Api->msgLen);
 }
 
-#define MAX_UL_TB_LENGTH 128
+#define MIN_UL_TB_LENGTH 18 // 128
 // --------------------------------------------
 void UeTerminal::buildBSRAndData(BOOL isLongBSR) {
     UInt32 msgLen = 0;
@@ -652,7 +652,7 @@ void UeTerminal::buildBSRAndData(BOOL isLongBSR) {
 
     pUlDataPduInd->rnti = m_rnti; 
     pUlDataPduInd->length = BSR_MSG_LENGTH;
-    pUlDataPduInd->ulCqi = 80;   //TBD 0 ~ 255
+    pUlDataPduInd->ulCqi = 160;   //TBD 0 ~ 255
     pUlDataPduInd->timingAdvance = m_ta;
     pUlDataPduInd->dataOffset = 1;  // TBD
 
@@ -660,11 +660,22 @@ void UeTerminal::buildBSRAndData(BOOL isLongBSR) {
 
     if (!isLongBSR) {
         if (!m_triggerRlcStatusPdu) {
-            UInt8 bsr[BSR_MSG_LENGTH] = {0x3a, 0x3d, 0x1f, 0x00, 0x12};
-            m_phyMacAPI->addSchPduData(bsr, pUlDataPduInd->length);
+            if (m_triggerIdRsp) {
+                UInt8 bsr[BSR_MSG_LENGTH] = {0x3a, 0x3d, 0x1f, 0x00, 0x08};
+                m_phyMacAPI->addSchPduData(bsr, pUlDataPduInd->length);
+            } else {
+                // for rrc setup complete
+                UInt8 bsr[BSR_MSG_LENGTH] = {0x3a, 0x3d, 0x1f, 0x00, 0x0e};
+                m_phyMacAPI->addSchPduData(bsr, pUlDataPduInd->length);               
+            }
         } else {
-            UInt8 bsr[BSR_MSG_LENGTH] = {0x3d, 0x21, 0x02, 0x1f, 0x12, m_rlcStatusPdu[0], m_rlcStatusPdu[1]};
-            m_phyMacAPI->addSchPduData(bsr, pUlDataPduInd->length);
+            if (m_triggerIdRsp) {
+                UInt8 bsr[BSR_MSG_LENGTH] = {0x3d, 0x21, 0x02, 0x1f, 0x08, m_rlcStatusPdu[0], m_rlcStatusPdu[1]};
+                m_phyMacAPI->addSchPduData(bsr, pUlDataPduInd->length);
+            } else {
+                UInt8 bsr[BSR_MSG_LENGTH] = {0x3d, 0x21, 0x02, 0x1f, 0x0e, m_rlcStatusPdu[0], m_rlcStatusPdu[1]};
+                m_phyMacAPI->addSchPduData(bsr, pUlDataPduInd->length);               
+            }
             m_triggerRlcStatusPdu = FALSE;
         }
         LOG_INFO(UE_LOGGER_NAME, "[%s], %s, compose BSR to request UL resource, msgLen = %d\n",  __func__, m_uniqueId, pL1Api->msgLen);
@@ -689,9 +700,9 @@ void UeTerminal::buildBSRAndData(BOOL isLongBSR) {
                 if (m_triggerRlcStatusPdu) {
                 	LOG_TRACE(UE_LOGGER_NAME, "[%s], %s, add RlC status PDU\n",  __func__, m_uniqueId);
                     m_triggerRlcStatusPdu = FALSE;
-                    UInt8 macPdu[MAX_UL_TB_LENGTH] = {0x3d, 0x21, 0x02, 0x21, 0x80,(UInt8)length, 0x1f, 0x00, m_rlcStatusPdu[0], m_rlcStatusPdu[1]};
+                    UInt8 macPdu[IDENTITY_MSG_LENGTH] = {0x3d, 0x21, 0x02, 0x21, 0x80,(UInt8)length, 0x1f, 0x00, m_rlcStatusPdu[0], m_rlcStatusPdu[1]};
                     memcpy(macPdu + 10, identityRsp, length);
-                    pUlDataPduInd->length = MAX_UL_TB_LENGTH;
+                    pUlDataPduInd->length = IDENTITY_MSG_LENGTH;
                     m_phyMacAPI->addSchPduData(macPdu, pUlDataPduInd->length);
                     LOG_INFO(UE_LOGGER_NAME, "[%s], %s, compose BSR and identity response and RLC ACK, msgLen = %d\n",  __func__, m_uniqueId, pL1Api->msgLen);
                 } else {
@@ -704,8 +715,8 @@ void UeTerminal::buildBSRAndData(BOOL isLongBSR) {
             } else {
                 LOG_TRACE(UE_LOGGER_NAME, "[%s], %s, add RlC status PDU\n",  __func__, m_uniqueId);
                 m_triggerRlcStatusPdu = FALSE;
-                UInt8 macPdu[MAX_UL_TB_LENGTH] = {0x3d, 0x21, 0x02, 0x1f, 0x00, m_rlcStatusPdu[0], m_rlcStatusPdu[1]};
-                pUlDataPduInd->length = MAX_UL_TB_LENGTH;
+                UInt8 macPdu[MIN_UL_TB_LENGTH] = {0x3d, 0x21, 0x02, 0x1f, 0x00, m_rlcStatusPdu[0], m_rlcStatusPdu[1]};
+                pUlDataPduInd->length = MIN_UL_TB_LENGTH;
                 m_phyMacAPI->addSchPduData(macPdu, pUlDataPduInd->length);
                 LOG_INFO(UE_LOGGER_NAME, "[%s], %s, compose BSR and RLC ACK, msgLen = %d\n",  __func__, m_uniqueId, pL1Api->msgLen);
             }
@@ -787,7 +798,8 @@ void UeTerminal::buildRRCSetupComplete() {
     // 12 1E 00 40 08 04 02 60 04 00 
     // 02 1F 00 5D 01 00 E0 C1 60
     UInt8 rrcSetupCompl[RRC_SETUP_COMPLETE_LENGTH] = { 
-        0x3A, 0x3D, 0x21, 0x80, 0x88, 0x1F, 0x0A, 0x00, 0xA0, 0x00, 0x00,
+        0x3D, 0x21, 0x4b, 0x1F, 0x00, 0xA0, 0x00, 0x00,
+#if 0
         0x22, 0x30, 0x03, 0x62, 0xD2, 0x7A, 0x17, 0xEB, 0xE5, 0x0E, 
         0xDA, 0x08, 0x07, 0x41, 0x12, 0x0B, 0xF6, 0x64, 0xF0, 0x00, 
         0x03, 0x62, 0xD2, 0xE0, 0x9B, 0x9B, 0x5C, 0x05, 0xF0, 0x70, 
@@ -801,6 +813,13 @@ void UeTerminal::buildRRCSetupComplete() {
         0xA6, 0x20, 0x0A, 0x60, 0x14, 0x04, 0x62, 0x91, 0x03, 0x00, 
         0x12, 0x1E, 0x00, 0x40, 0x08, 0x04, 0x02, 0x60, 0x04, 0x00, 
         0x02, 0x1F, 0x00, 0x5D, 0x01, 0x00, 0xE0, 0xC1, 0x60};
+#else 
+        0x22, 0x00, 0x82, 0x0E, 0x82, 0xE2, 0x10, 0x92, 0x0C, 0x00, 0x2A, 0x69, 0x04, 0xC2, 0x4C, 0x09,
+        0xC1, 0xC1, 0x81, 0x80, 0x00, 0x46, 0x04, 0x03, 0xA0, 0x62, 0x4E, 0x3B, 0x01, 0x00, 0x42, 0x20,
+        0x02, 0x02, 0x00, 0x21, 0x02, 0x0C, 0x00, 0x00, 0x00, 0x01, 0x06, 0x0C, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x06, 0x00, 0x00, 0x06, 0x00, 0x00, 0x14, 0x00, 0xB8, 0x40, 0x00, 0x62, 0x07, 0x2A, 0xC0,
+        0x28, 0xBA, 0x02, 0x08, 0x00, 0x00, 0x00, 0x00, 0x54, 0x03, 0xEB, 0x3F, 0x55};
+#endif
 
     msgLen += pUlDataPduInd->length;
     pL1Api->msgLen += msgLen;
@@ -817,8 +836,8 @@ void UeTerminal::buildRRCSetupComplete() {
 void UeTerminal::handleDlDciPdu(FAPI_dlConfigRequest_st* pDlConfigHeader, FAPI_dciDLPduInfo_st* pDlDciPdu) {
     LOG_TRACE(UE_LOGGER_NAME, "[%s], %s, handle FAPI_dciDLPduInfo_st, m_state = %d\n",  __func__, m_uniqueId, m_state);
     
-    if (m_state == IDLE) {
-        LOG_WARN(UE_LOGGER_NAME, "[%s], %s, UE in idle state, drop the data\n",  __func__, m_uniqueId);
+    if (m_state == IDLE || m_state == WAIT_TERMINATING) {
+        LOG_WARN(UE_LOGGER_NAME, "[%s], %s, UE in idle or terminating state, drop the data\n",  __func__, m_uniqueId);
         return;
     }
 
@@ -892,8 +911,8 @@ void UeTerminal::displayDciPduInfo(FAPI_dciDLPduInfo_st* pDlDciPdu) {
 void UeTerminal::handleDlSchPdu(FAPI_dlConfigRequest_st* pDlConfigHeader, FAPI_dlSCHConfigPDUInfo_st* pDlSchPdu) {
 	LOG_TRACE(UE_LOGGER_NAME, "[%s], %s, handle FAPI_dlSCHConfigPDUInfo_st, m_state = %d\n",  __func__, m_uniqueId, m_state);
 
-    if (m_state == IDLE) {
-        LOG_WARN(UE_LOGGER_NAME, "[%s], %s, UE in idle state, drop the data\n",  __func__, m_uniqueId);
+    if (m_state == IDLE || m_state == WAIT_TERMINATING) {
+        LOG_WARN(UE_LOGGER_NAME, "[%s], %s, UE in idle or terminating state, drop the data\n",  __func__, m_uniqueId);
         return;
     }  
 
@@ -1348,6 +1367,55 @@ void UeTerminal::allocateUlHarqCallback(UInt16 harqId, BOOL result) {
     }
 }
 
+// -------------------------------------------------------
+UInt8 gMcs2TBSIndex[29] = {  
+    0, 1, 2, 3 , 4, 5, 6, 7, 8, 9,
+    10, 10, 11, 12, 13, 14, 15, 16, 17, 18,
+    19, 19, 20, 21, 22, 23, 24, 25, 26};
+
+UInt16 gTbSizeTable[27][8] = {
+    { 16,  32,	 56,   88,	 120,  152,  176, 208   },                                
+    { 24,  56,	 88,   144,	 176,  208,  224, 256   },
+    { 32,  72,	 144,  176,  208,  256,  296, 328   },
+    { 40,  104,	 176,  208,  256,  328,  392, 440   },
+    { 56,  120,	 208,  256,  328,  408,  488, 552   },
+    { 72,  144,	 224,  328,  424,  504,  600, 680   },
+    { 328, 176,	 256,  392,  504,  600,  712, 808   },
+    { 104, 224,	 328,  472,  584,  712,  840, 968   },
+    { 120, 256,	 392,  536,  680,  808,  968, 1096  },
+    { 136, 296,	 456,  616,  776,  936,  1096, 1256 },
+    { 144, 328,	 504,  680,  872,  1032, 1224, 1384 },
+    { 176, 376,	 584,  776,  1000, 1192, 1384, 1608 },
+    { 208, 440,	 680,  904,  1128, 1352, 1608, 1800 },
+    { 224, 488,	 744,  1000, 1256, 1544, 1800, 2024 },
+    { 256, 552,	 840,  1128, 1416, 1736, 1992, 2280 },
+    { 280, 600,	 904,  1224, 1544, 1800, 2152, 2472 },
+    { 328, 632,	 968,  1288, 1608, 1928, 2280, 2600 },
+    { 336, 696,	 1064, 1416, 1800, 2152, 2536, 2856 },
+    { 376, 776,	 1160, 1544, 1992, 2344, 2792, 3112 },
+    { 408, 840,	 1288, 1736, 2152, 2600, 2984, 3496 },
+    { 440, 904,	 1384, 1864, 2344, 2792, 3240, 3752 },
+    { 488, 1000, 1480, 1992, 2472, 2984, 3496, 4008 },
+    { 520, 1064, 1608, 2152, 2664, 3240, 3752, 4264 },
+    { 552, 1128, 1736, 2280, 2856, 3496, 4008, 4584 },
+    { 584, 1192, 1800, 2408, 2984, 3624, 4264, 4968 },
+    { 616, 1256, 1864, 2536, 3112, 3752, 4392, 5160 },
+    { 712, 1480, 2216, 2984, 3752, 4392, 5160, 5992 }
+};
+// --------------------------------------------
+UInt16 UeTerminal::getUlTBSize(UInt8 numRb, UInt8 mcs) {
+    if (mcs > 28 || numRb > 8) {
+        LOG_WARN(UE_LOGGER_NAME, "[%s], %s, not supported yet\n", __func__, m_uniqueId);
+        return 0;
+    }
+
+    UInt8 tbsIndex = gMcs2TBSIndex[mcs];
+
+    LOG_INFO(UE_LOGGER_NAME, "[%s], %s, numRb = %d, mcs = %d, tbSize = %d\n", __func__, m_uniqueId, numRb, mcs, gTbSizeTable[tbsIndex][numRb-1]);
+
+    return gTbSizeTable[tbsIndex][numRb-1];
+}
+
 // --------------------------------------------
 void UeTerminal::ulHarqSendCallback(UInt16 harqId, UInt8 numRb, UInt8 mcs, UInt8& ueState) {
 	LOG_TRACE(UE_LOGGER_NAME, "[%s], %s, m_state = %d, harqId = %d, numRb = %d, mcs = %d\n",  __func__,
@@ -1360,34 +1428,56 @@ void UeTerminal::ulHarqSendCallback(UInt16 harqId, UInt8 numRb, UInt8 mcs, UInt8
         buildCrcData(0);
         m_stsCounter->countRRCSetupComplCrcSent();
     } else if (RRC_SETUP_COMPLETE_SR_DCI0_RECVD == ueState) {
-        if (numRb < 4) {  // TODO need to consider both mcs and numRb
-            // send BSR to request more UL resource for sending ul data
-            buildBSRAndData();
-            buildCrcData(0);      
-        } else {
+        // if (numRb < 4) {  // TODO need to consider both mcs and numRb
+        //     // send BSR to request more UL resource for sending ul data
+        //     buildBSRAndData();
+        //     buildCrcData(0);      
+        // } else {
+        //     buildRRCSetupComplete();
+        //     buildCrcData(0);
+        //     m_stsCounter->countRRCSetupComplCrcSent();
+        // }
+        UInt16 tbSize = getUlTBSize(numRb, mcs);
+        if ((tbSize >= (RRC_SETUP_COMPLETE_LENGTH << 3)) || (numRb > 8)) {
             buildRRCSetupComplete();
             buildCrcData(0);
             m_stsCounter->countRRCSetupComplCrcSent();
+        } else {
+            // send BSR to request more UL resource for sending ul data
+            buildBSRAndData();
+            buildCrcData(0);  
         }
     } else {
         // TODO
         if (ueState >= RRC_SETUP_COMPLETE_SENT && ueState <= RRC_CONNECTED) {
-            if (numRb == 1) {
-                if (!m_triggerIdRsp && m_triggerRlcStatusPdu) {
-                    // only need to send RLC status pdu, 1 RB is enough
-                    buildBSRAndData(TRUE);
-                    buildCrcData(0);  
-                } else {
-                    // need to send identity resp, may also send m_triggerRlcStatusPdu 
-                    // send short BSR to request more UL resource for sending ul data 
-                    buildBSRAndData();
-                    buildCrcData(0);  
-                }
-            } else {
-                // more than 1 RB allocated, send ul data now
+            // if (numRb == 1) {
+            //     if (!m_triggerIdRsp && m_triggerRlcStatusPdu) {
+            //         // only need to send RLC status pdu, 1 RB is enough
+            //         buildBSRAndData(TRUE);
+            //         buildCrcData(0);  
+            //     } else {
+            //         // need to send identity resp, may also send m_triggerRlcStatusPdu 
+            //         // send short BSR to request more UL resource for sending ul data 
+            //         buildBSRAndData();
+            //         buildCrcData(0);  
+            //     }
+            // } else {
+            //     // more than 1 RB allocated, send ul data now
+            //     buildBSRAndData(TRUE);
+            //     buildCrcData(0); 
+            // }    
+
+            UInt16 tbSize = getUlTBSize(numRb, mcs);
+            if ((tbSize >= (IDENTITY_MSG_LENGTH << 3)) || (numRb > 8)) {
+                // send ul data now
                 buildBSRAndData(TRUE);
                 buildCrcData(0); 
-            }             
+            } else {
+                // need to send identity resp, may also send m_triggerRlcStatusPdu 
+                // send short BSR to request more UL resource for sending ul data 
+                buildBSRAndData();
+                buildCrcData(0);  
+            }
         } else if (ueState >= RRC_RELEASING) {
             buildBSRAndData(TRUE);
             buildCrcData(0);     
