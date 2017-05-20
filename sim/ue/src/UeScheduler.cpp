@@ -82,9 +82,9 @@ UeScheduler::UeScheduler(PhyMacAPI* phyMacAPI, StsCounter* stsCounter)
     // The ueId and ra-rnti value is in range 1~MAX_UE_SUPPORTED
     m_ueList = new UeTerminal*[MAX_UE_SUPPORTED];
     for (UInt32 i=0; i<MAX_UE_SUPPORTED; i++) {
-        m_ueList[i] = new UeTerminal(i+1, i+1, phyMacAPI, stsCounter);
+    	m_ueList[i] = new UeTerminal(i+1, i+1, phyMacAPI, stsCounter);
 //    	m_ueList[i] = new NWRetransmitRrcSetup(i+1, i+1, phyMacAPI, stsCounter);
-//        m_ueList[i] = new UENotSendRrcSetupComplete(i+1, i+1, phyMacAPI, stsCounter);
+//       m_ueList[i] = new UENotSendRrcSetupComplete(i+1, i+1, phyMacAPI, stsCounter);
 //        m_ueList[i] = new NWRetransmitIdentityReq(i+1, i+1, phyMacAPI, stsCounter);
 //        m_ueList[i] = new UESuspending(i+1, i+1, phyMacAPI, stsCounter);
 //        m_ueList[i] = new UENotSendRlcAck(i+1, i+1, phyMacAPI, stsCounter);
