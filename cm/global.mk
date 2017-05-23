@@ -1,6 +1,7 @@
 # Complier -fPIC is mandatory when building dynamic lib *.so
-CC = gcc
-CXX = g++
+CC = $(PLATFORM_CC)
+CXX = $(PLATFORM_CXX)
+AR = $(PLATFORM_AR)
 
 # For debug load, DON'T define NDEBUG 
 #CFLAGS = -Wall -g -O2 -DNDEBUG -fPIC

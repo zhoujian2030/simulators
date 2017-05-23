@@ -17,10 +17,10 @@
 #include <string.h>
 
 #ifdef OS_LINUX
-#define L2_SERVER_IP "192.168.64.140"
+#define L2_SERVER_IP "127.0.0.1"
 #define L2_SERVER_PORT 8888
 
-#define UE_SERVER_IP "192.168.64.137"
+#define UE_SERVER_IP "127.0.0.1"
 #define UE_SERVER_PORT 9999
 #endif
 

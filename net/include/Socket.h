@@ -248,8 +248,9 @@ namespace net {
         // handler callback function like handleInput(), etc. 
         // So we should define ReactorThread as Socket's friend class
         friend class ReactorThread;
-
+#ifdef SCTP_SUPPORT
         friend class SctpSocket;
+#endif
         friend class TcpSocket;
         friend class UdpSocket;
         

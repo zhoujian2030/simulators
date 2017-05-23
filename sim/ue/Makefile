@@ -12,7 +12,11 @@ BINDIR = bin
 INCGTEST = -I$(PROJBASE)/test/lib/gtest/include
 INC += $(INCGTEST) -I$(PROJBASE)/cm/include -I$(PROJBASE)/net/include
 # MUST place libnet.a ahead of libcm.a because libnet depends on libcm.a
+ifeq ($(PLATFORM), x86)
 LIBS = $(PROJBASE)/net/lib/libnet.a $(PROJBASE)/cm/lib/libcm.a 
+else
+LIBS = $(PROJBASE)/net/lib/libnet_arm.a $(PROJBASE)/cm/lib/libcm_arm.a 
+endif
 
 # Files and folders
 SRCS := $(wildcard $(SRCDIR)/*.cpp $(SRCDIR)/*.c $(SRCDIR)/*.cc)

@@ -8,6 +8,8 @@
 #ifndef SCTP_SOCKET_H
 #define SCTP_SOCKET_H
 
+#ifdef SCTP_SUPPORT
+
 #include "Socket.h"
 #include <netinet/sctp.h>
 
@@ -23,5 +25,7 @@ namespace net {
         virtual int send(const char* theBuffer, int numOfBytesToSend, int& numberOfBytesSent);
     };
 }
+
+#endif
 
 #endif

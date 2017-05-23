@@ -14,11 +14,12 @@
 #include <sys/time.h>
 
 #define UE_LOGGER_NAME "UE"
+#define KPI_LOGGER_NAME "KPI"
 #define FILENAME /*lint -save -e613 */( NULL == strrchr(__FILE__, '\\') ? (strrchr(__FILE__, '/')+1): strrchr(__FILE__, '\\')+1)
 #define FUNCNAME __FUNCTION__
 #define LINE     __LINE__
 
-extern UInt8 gLogLevel;
+extern unsigned char gLogLevel;
 
 #define LOG_TRACE(moduleId, fmt, args...){\
         if (gLogLevel == 0) {\
