@@ -95,12 +95,12 @@ namespace ue {
 
             RRC_SETUP_COMPLETE_DCI0_RECVD,  
             RRC_SETUP_COMPLETE_SENT,
-            RRC_SETUP_COMPLETE_ACK_RECVD,   //21
+            RRC_SETUP_COMPLETE_ACK_RECVD,   //22
             RRC_SETUP_COMPLETE_NACK_RECVD,
 
             RRC_IDENTITY_REQ_RECVD,
 
-            RRC_CONNECTED,
+            RRC_CONNECTED, //25
             RRC_RELEASING,
             WAIT_TERMINATING
         } E_UE_STATE;

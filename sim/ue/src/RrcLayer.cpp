@@ -50,9 +50,14 @@ void RrcLayer::buildIdentityResponse(UInt8* buffer, UInt32& length) {
 
     UInt8 identityRsp[20] = { 0x48, 0x01, 0x60, 0xeA, 0xc1, 0x09, 0x20, 0xC4, 0x0C, 0x20,
                         0x8e, 0xC2, 0x00, 0x00};  
-    UInt8 imsi = (m_ueTerminal->m_ueId << 4) | (m_ueTerminal->m_ueId >> 4);
-    identityRsp[12] = imsi >> 3;
-    identityRsp[13] = imsi << 5;
+    // UInt8 imsi = ((m_ueTerminal->m_ueId % 10) << 4) | ((m_ueTerminal->m_ueId / 10) >> 4);
+    // identityRsp[12] = imsi & >> 3;
+    // identityRsp[13] = imsi << 5;
+
+    UInt8 imsiOtect0 = m_ueTerminal->m_ueId % 10;
+    UInt8 imsiOtect1 = m_ueTerminal->m_ueId / 10;
+    identityRsp[12] = (imsiOtect0 << 1) | ((imsiOtect1 & 0x08) >> 3);
+    identityRsp[13] = (imsiOtect1 & 0x07) << 5;
 
     memcpy(buffer, identityRsp, 20);
     length = 20;
