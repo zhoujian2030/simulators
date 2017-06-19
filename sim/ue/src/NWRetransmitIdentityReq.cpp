@@ -73,7 +73,33 @@ void NWRetransmitIdentityReq::dlHarqResultCallback(UInt16 harqProcessNum, UInt8 
 					pL1Api->msgLen += harqHeaderLen;
 				}
         	} else {
+#if 0
         		LOG_INFO(UE_LOGGER_NAME, "[%s], %s, Not send HARQ ACK, wait network retransmit identity request\n", __func__, m_uniqueId);
+#else
+        		LOG_INFO(UE_LOGGER_NAME, "[%s], %s, Send HARQ NACK, wait network retransmit identity request\n", __func__, m_uniqueId);
+				pL1Api->lenVendorSpecific = 0;
+				pL1Api->msgId = PHY_UL_HARQ_INDICATION;
+
+				pHarqInd->sfnsf = ( (m_sfn) << 4) | ( (m_sf) & 0xf);
+				pHarqInd->numOfHarq += 1;
+				UInt32 harqHeaderLen = offsetof(FAPI_harqIndication_st, harqPduInfo);
+
+				FAPI_tddHarqPduIndication_st* pTddHarqPduInd = (FAPI_tddHarqPduIndication_st*)&pHarqInd->harqPduInfo[pHarqInd->numOfHarq - 1];
+				pTddHarqPduInd->rnti = m_rnti;
+				pTddHarqPduInd->mode = tddAckNackFeedbackMode;  // 0: bundling, 1: multplexing, 2: special bundling
+				pTddHarqPduInd->numOfAckNack += 1;
+				pTddHarqPduInd->harqBuffer[0] = 4;
+				pTddHarqPduInd->harqBuffer[1] = 0;
+
+				msgLen += sizeof(FAPI_tddHarqPduIndication_st);
+				pL1Api->msgLen += msgLen;
+
+				m_phyMacAPI->addHarqDataLength(msgLen);
+				if (pHarqInd->numOfHarq == 1) {
+					m_phyMacAPI->addHarqDataLength(FAPI_HEADER_LENGTH + harqHeaderLen);
+					pL1Api->msgLen += harqHeaderLen;
+				}
+#endif
 				return;
         	}
 

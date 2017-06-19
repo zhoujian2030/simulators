@@ -23,6 +23,8 @@ namespace ue {
 	protected:
 		virtual void allocateDlHarqCallback(UInt16 harqProcessNum, BOOL result);
 		virtual void dlHarqResultCallback(UInt16 harqProcessNum, UInt8 ackFlag, BOOL firstAck, BOOL result);
+
+		UInt16 m_numRRCSetupRetrans;
 	};
 
 }

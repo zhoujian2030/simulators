@@ -12,8 +12,8 @@
 #include <map>
 #include <vector>
 
-#define MAX_UE_SUPPORTED 1//32
-#define MAX_UE_ACCESS_COUNT 9999999
+#define MAX_UE_SUPPORTED 1 //32
+#define MAX_UE_ACCESS_COUNT 1 //9999999
 #define DL_MSG_CONTAINER_SIZE 4 * 4
 
 namespace ue {
