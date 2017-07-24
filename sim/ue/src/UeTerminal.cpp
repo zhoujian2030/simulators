@@ -213,7 +213,7 @@ BOOL UeTerminal::scheduleRach(UeScheduler* pUeScheduler) {
         // only send rach in specisl subframe 1 according SIB2
         UInt32 msgLen = 0;
         FAPI_l1ApiMsg_st* pL1Api = (FAPI_l1ApiMsg_st *)m_phyMacAPI->getRachBuffer();
-        pL1Api->lenVendorSpecific = 1;
+        pL1Api->lenVendorSpecific = 0;
         pL1Api->msgId = PHY_UL_RACH_INDICATION;
 
         FAPI_rachIndication_st* pRachInd = (FAPI_rachIndication_st *)&pL1Api->msgBody[0];
@@ -500,7 +500,7 @@ void UeTerminal::buildCrcData(UInt8 crcFlag) {
     UInt32 msgLen = 0;
 
     FAPI_l1ApiMsg_st* pL1Api = (FAPI_l1ApiMsg_st *)m_phyMacAPI->getCrcBuffer();
-    pL1Api->lenVendorSpecific = 1;
+    pL1Api->lenVendorSpecific = 0;
     pL1Api->msgId = PHY_UL_CRC_INDICATION;
 
     FAPI_crcIndication_st *pCrcInd = (FAPI_crcIndication_st*)&pL1Api->msgBody[0];
@@ -576,7 +576,7 @@ void UeTerminal::buildMsg3Data() {
 
     UInt32 msgLen = 0;
     FAPI_l1ApiMsg_st* pL1Api = (FAPI_l1ApiMsg_st *)m_phyMacAPI->getSchBuffer();
-    pL1Api->lenVendorSpecific = 1;
+    pL1Api->lenVendorSpecific = 0;
     pL1Api->msgId = PHY_UL_RX_ULSCH_INDICATION;
 
     FAPI_rxULSCHIndication_st *pULSchInd = (FAPI_rxULSCHIndication_st*)&pL1Api->msgBody[0];
@@ -632,7 +632,7 @@ void UeTerminal::buildMsg3Data() {
 void UeTerminal::buildBSRAndData(BOOL isLongBSR) {
     UInt32 msgLen = 0;
     FAPI_l1ApiMsg_st* pL1Api = (FAPI_l1ApiMsg_st *)m_phyMacAPI->getSchBuffer();
-    pL1Api->lenVendorSpecific = 1;
+    pL1Api->lenVendorSpecific = 0;
     pL1Api->msgId = PHY_UL_RX_ULSCH_INDICATION;
 
     FAPI_rxULSCHIndication_st *pULSchInd = (FAPI_rxULSCHIndication_st*)&pL1Api->msgBody[0];
@@ -714,8 +714,8 @@ void UeTerminal::buildBSRAndData(BOOL isLongBSR) {
                 }
 
                 // for test
-                //m_state =  WAIT_TERMINATING;
-                //LOG_INFO(UE_LOGGER_NAME, "[%s], Release UE resource now!!!!!!!!!!!!!\n", __func__);
+                m_state =  WAIT_TERMINATING;
+                LOG_INFO(UE_LOGGER_NAME, "[%s], Release UE resource now!!!!!!!!!!!!!\n", __func__);
             } else {
                 LOG_TRACE(UE_LOGGER_NAME, "[%s], %s, add RlC status PDU\n",  __func__, m_uniqueId);
                 m_triggerRlcStatusPdu = FALSE;
@@ -736,7 +736,7 @@ void UeTerminal::buildBSRAndData(BOOL isLongBSR) {
 void UeTerminal::buildRRCSetupComplete() {    
     UInt32 msgLen = 0;
     FAPI_l1ApiMsg_st* pL1Api = (FAPI_l1ApiMsg_st *)m_phyMacAPI->getSchBuffer();
-    pL1Api->lenVendorSpecific = 1;
+    pL1Api->lenVendorSpecific = 0;
     pL1Api->msgId = PHY_UL_RX_ULSCH_INDICATION;
 
     FAPI_rxULSCHIndication_st *pULSchInd = (FAPI_rxULSCHIndication_st*)&pL1Api->msgBody[0];
