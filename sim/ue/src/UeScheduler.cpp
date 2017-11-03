@@ -88,7 +88,7 @@ UeScheduler::UeScheduler(PhyMacAPI* phyMacAPI, StsCounter* stsCounter)
     //    m_ueList[i] = new NWRetransmitIdentityReq(i+1, i+1, phyMacAPI, stsCounter);
 //        m_ueList[i] = new UESuspending(i+1, i+1, phyMacAPI, stsCounter);
 //        m_ueList[i] = new UENotSendRlcAck(i+1, i+1, phyMacAPI, stsCounter);
-//		m_ueList[i] = new UESendRrcReestablishmentReq(i+1, i+1, phyMacAPI, stsCounter);
+		// m_ueList[i] = new UESendRrcReestablishmentReq(i+1, i+1, phyMacAPI, stsCounter);
     }
 
     for (UInt32 i=0; i<DL_MSG_CONTAINER_SIZE; i++) {
@@ -924,7 +924,7 @@ void UeScheduler::handleDlConfigReq(FAPI_dlConfigRequest_st* pDlConfigReq) {
                 UInt16 rnti = pNextPdu->dlConfigpduInfo.DCIPdu.rnti;
                 if (pNextPdu->dlConfigpduInfo.DCIPdu.dciFormat == FAPI_DL_DCI_FORMAT_1A ||
                     pNextPdu->dlConfigpduInfo.DCIPdu.dciFormat == FAPI_DL_DCI_FORMAT_1) {
-                    if (rnti != 0xffff) {
+                    if (rnti != 0xffff && rnti != 0xfffe) {
 //                        LOG_DBG(UE_LOGGER_NAME, "[%s], Recv FAPI_DL_DCI_FORMAT_1A / FAPI_DL_DCI_FORMAT_1 (%d), "
 //                            "rnti = %d, curSfnSf = %d.%d\n", __func__,
 //                            pNextPdu->dlConfigpduInfo.DCIPdu.dciFormat, rnti, m_sfn, m_sf);

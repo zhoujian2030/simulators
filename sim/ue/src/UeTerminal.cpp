@@ -714,8 +714,8 @@ void UeTerminal::buildBSRAndData(BOOL isLongBSR) {
                 }
 
                 // for test
-                m_state =  WAIT_TERMINATING;
-                LOG_INFO(UE_LOGGER_NAME, "[%s], Release UE resource now!!!!!!!!!!!!!\n", __func__);
+                //m_state =  WAIT_TERMINATING;
+                //LOG_INFO(UE_LOGGER_NAME, "[%s], Release UE resource now!!!!!!!!!!!!!\n", __func__);
             } else {
                 LOG_TRACE(UE_LOGGER_NAME, "[%s], %s, add RlC status PDU\n",  __func__, m_uniqueId);
                 m_triggerRlcStatusPdu = FALSE;

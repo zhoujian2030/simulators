@@ -513,6 +513,7 @@ typedef union FAPI_cellConfigParam_unT
      Value: 0 . 7 */
      uint16_t  nAnCs;
      
+     /* Value: 0 . 2047 */
      uint16_t  n1PucchAn;
 
      /* PUCCH Config Ends */
@@ -850,142 +851,6 @@ typedef struct FAPI_cellReConfig_stT
 ///* SPS CONFIG */
 //#define   FAPI_SPS_DL_CONFIG_SCHD_INTERVAL               118
 //#define   FAPI_SPS_DL_N1_PUCCH_AN_PERSISTENT             119
-/* SPS CONFIG  Ends*/
-
-/* UE Config parametrs which wiil be filled in FAPI_ueConfig_st */
-
-    /* An opaque handling to associate the received information in 
-    RX.indication */
-  
-    /* uint32_t  handle; */
-
-    /* The RNTI used for identifying the UE when receiving the PDU.
-    Value: 1 . 65535. */
-
-    /* uint16_t  rnti; */
-
-    /* CQI Config */
-
-    /* PUCCH resource for periodc CQI reporting
-    Value: 0 . 1185 */
-
-    /* uint16_t  cqiPucchResourceIndex; */
-
-    /* The periodic PMI reporting configuration.
-    Value: 0 . 1023. */
-
-    /* uint16_t  cqiPmiConfigIndex; */
-
-    /* The periodic RI reporting configuration.
-    Value: 0 . 1023. */
-
-    /* uint16_t  cqiRiConfigIndex; */
-
-    /* Indicates if simultaneous transmission of CQI and ACK/NACK is allowed.
-    Value:
-    0: no PUCCH Format 2a/2b
-    1: PUCCH Format 2a/2b can be used */
-
-    /* uint16_t  simultaneousAckNackAndCqi; */
-
-    /* CQI Config ENDS */
- 
-    /* ACK/NACK Config */
-
-    /* The ACK/NACK repetition  factor.
-    Value: 2,4,6 */
-    
-    /* uint8_t   ackNacknRepetitionFactor; */
-
-    /* The ACK/NACK repetition PUCCH resource index.
-    Value: 0. 2047 */
-
-    /* uint16_t  anN1PUCCHANRep; */
-
-    /* The TDD ACK/NACK Feedback Mode
-    Value:
-    0: bundling
-    1: multiplexing */
-
-    /* uint8_t   tddAckNackFeedbackMode; */
-
-    /* ACK/NACK Config Ends */
-
-    /* SRS Config */
-
-    /*  SRS Bandwidth. This value is fixed for a UE and allocated in 
-    RRC connection setup.
-    Value: 0 . 3. */
-
-    /* uint8_t   srSBandWidth; */
-
-    /* Configures the frequency hopping on the SRS. 
-    This value is fixed for a UE and allocated in RRC connection setup.
-    Value 0 . 3. */
-
-    /* uint8_t   srsHoppingBandwidth; */
-
-    /* Frequency-domain position, NRRC This value is fixed for a UE and 
-    allocated in RRC connection setup.
-    Value: 0 . 23. */
-
-    /* uint8_t   freqDomainPosition; */
-
-    /* The duration of the SRS configuration
-    Value:
-    0: once
-    1: indefinite */
-
-    /* uint8_t   srsDuration; */
-
-    /* Defines the periodicity and subframe location of the SRS.
-    SRS Configuration Index. This value is fixed for a UE and 
-    allocated in RRC connection setup
-    Value: 0 . 1023. */
-
-    /* uint16_t   srsConfigIndex; */
-
-    /* Configures the frequency location of the SRS. 
-    This value is fixed for a UE and allocated in RRC connection setup.
-    Value: 0 .  1 */
-
-    /* uint8_t   txComb; */
-
-    /* Configures the SRS sequence generation. 
-    This value is fixed for a UE and allocated in RRC connection setup.
-    Value: 0 . 7 */
-
-    /* uint8_t   soundingRefCyclicShift; */
-    /* SRS Config Ends */
-
-    /* SR Config */
-
-    /* Scheduling request PUCCH resource index
-    Value: 0 . 2047. */
- 
-    /* uint16_t  srPucchResourceIndex; */
-
-    /* The scheduling request configuration index.
-    Value: 0 . 155. */
-
-    /* uint8_t   srConfigIndex; */
-
-    /* SR Config Ends */
-
-    /* SPS Config */
-
-    /* SPS Configuration Interval
-    Value: 10,20,32,40,64,80,128,160,320,640 */
-
-    /* uint16_t  spsDlConfigSchedInterval; */
-
-    /* The SPS PUCCH AN Resource configuration.
-    The TLV can be repeated four times.
-    Value: 0 . 2047. */
-
-    /* uint16_t  spsDln1PUCCHANPersistent; */
-
-    /* SPS Config Ends */
 
 /* add by lucas todo  */
 #define    FAPI_RNTI                                     121
@@ -1047,14 +912,15 @@ typedef struct FAPI_cellReConfig_stT
 #define   FAPI_PUSCH_CONFIG_BETAOFFSET_RI_INDEX          170
 #define   FAPI_PUSCH_CONFIG_BETAOFFSET_CQI_INDEX         171
 
-/* -------------------------------   */
+
+/* SPS CONFIG  Ends*/
 
 /* UE Config parametrs which wiil be filled in FAPI_ueConfig_st */
 typedef union FAPI_ueConfigParam_unT
 {
-    /* An opaque handling to associate the received information in
+    /* An opaque handling to associate the received information in 
     RX.indication */
-
+  
     /* uint32_t  handle; */
 
     /* The RNTI used for identifying the UE when receiving the PDU.
@@ -1149,13 +1015,13 @@ typedef union FAPI_ueConfigParam_unT
     uint16_t cqiformatIndicatorPeriodic_subband_k;
 
     /* CQI Config ENDS */
-
+ 
     /* ACK/NACK Config */
     uint16_t ackNAckConfigPresent;
 
     /* The ACK/NACK repetition  factor.
     Value: 2,4,6 */
-
+    
     uint16_t   ackNacknRepetitionFactor;
 
     /* The ACK/NACK repetition PUCCH resource index.
@@ -1180,19 +1046,19 @@ typedef union FAPI_ueConfigParam_unT
 
     uint16_t srsConfigEn;
 
-    /*  SRS Bandwidth. This value is fixed for a UE and allocated in
+    /*  SRS Bandwidth. This value is fixed for a UE and allocated in 
     RRC connection setup.
     Value: 0 . 3. */
 
     uint16_t   srSBandWidth;
 
-    /* Configures the frequency hopping on the SRS.
+    /* Configures the frequency hopping on the SRS. 
     This value is fixed for a UE and allocated in RRC connection setup.
     Value 0 . 3. */
 
     uint16_t   srsHoppingBandwidth;
 
-    /* Frequency-domain position, NRRC This value is fixed for a UE and
+    /* Frequency-domain position, NRRC This value is fixed for a UE and 
     allocated in RRC connection setup.
     Value: 0 . 23. */
 
@@ -1206,19 +1072,19 @@ typedef union FAPI_ueConfigParam_unT
     uint16_t   srsDuration;
 
     /* Defines the periodicity and subframe location of the SRS.
-    SRS Configuration Index. This value is fixed for a UE and
+    SRS Configuration Index. This value is fixed for a UE and 
     allocated in RRC connection setup
     Value: 0 . 644. */
 
     uint16_t   srsConfigIndex;
 
-    /* Configures the frequency location of the SRS.
+    /* Configures the frequency location of the SRS. 
     This value is fixed for a UE and allocated in RRC connection setup.
     Value: 0 .  1 */
 
     uint16_t   txComb;
 
-    /* Configures the SRS sequence generation.
+    /* Configures the SRS sequence generation. 
     This value is fixed for a UE and allocated in RRC connection setup.
     Value: 0 . 7 */
 
@@ -1232,7 +1098,7 @@ typedef union FAPI_ueConfigParam_unT
 
     /* Scheduling request PUCCH resource index
     Value: 0 . 2047. */
-
+ 
     uint16_t  srPucchResourceIndex;
 
     /* The scheduling request configuration index.
@@ -1269,6 +1135,7 @@ typedef union FAPI_ueConfigParam_unT
     uint16_t  betaOffsetCQIIndex;  /* {0~15}  ¡Á¡é¡êo0¡ê?1?¦Ì¡À¡ê¨¢??¡ä¨º1¨®? */
 
 }FAPI_ueConfigParam_un;
+/* -------------------------------   */
 
 /* UE Config structure */
 typedef struct FAPI_ueConfig_stT 
@@ -1282,56 +1149,9 @@ typedef struct FAPI_ueConfig_stT
 
     /* The Possible values can be of size uint16_t or uint32_t or uint8_t */
     /* For more details please see above parametrs wise in comment */ 
-//    uint8_t   value[FAPI_VAR_SIZE(tagLen)];
     FAPI_ueConfigParam_un   ueConfigParam;
 
 }FAPI_ueConfig_st;
-
-/*  ------------------------------- */
-
-/* PHY UE CONFIG REQUEST: This defines the message body for
- * PHY_UE_CONFIG_REQUEST.
- * The message is only valid if semi-static configuration is kept in PHY.
- */
-typedef struct FAPI_phyUeConfigRequest_stT
-{
-     uint8_t                numOfTlv;
-     uint16_t                ueIndex;
-     uint16_t				cfgMode; /* 1:Creat Ue Cfg; 2:Updata Ue Cfg;3:Release Ue */
-     FAPI_ueConfig_st       configtlvs[FAPI_VAR_SIZE(numOfTlv)];
-
-}FAPI_phyUeConfigRequest_st;
-
-/*  ------------------------------- */
-
-/* PHY UE CONFIG RESPONSE: This defines the message body for
- * PHY_UE_CONFIG_RESPONSE
- * The message is only valid if semi-static configuration is kept in PHY.
- */
-
-typedef struct FAPI_phyUeConfigResp_stT
-{
-  /* Possible values are defined in FAPI_l1ErrorCodes_en. */
-    FAPI_l1ErrorCodes_en    errorCode;
-
-    /* Number of invalid or unsupported TLVs contained in the message body. */
-    uint8_t                 numOfInvalidOrUnsupportedTLV;
-
-    /* Number of missing TLVs contained in the message body.
-    If the PHY is in the CONFIGURED state this will always be 0. */
-    uint8_t                 numOfMissingTLV;
-
-/*+ SPR 9285*/
-    uint8_t                 padding;
-/*- SPR 9285*/
-    /* A list of invalid or unsupported TLVs .
-    each TLV is presented in its entirety. */
-    FAPI_ueConfig_st        listOfTLV[FAPI_VAR_SIZE(numOfInvalidOrUnsupportedTLV)];
-
-    /* A list of missing TLVs . each TLV is presented in its entirety */
-    FAPI_ueConfig_st        listOfMissingTlv[FAPI_VAR_SIZE(numOfTlv)];
-
-}FAPI_phyUeConfigResp_st;
 
 /* --------------------------------- */
 
@@ -1546,7 +1366,8 @@ typedef struct FAPI_dciFormat1A_stT
     uint8_t         n_gap; 
     uint8_t padding[1];
 #else
-    uint8_t padding[2];
+    uint8_t 		nGap;
+    uint8_t 		padding[1];
 #endif
 }FAPI_dciFormat1A_st;
 
@@ -2219,7 +2040,9 @@ typedef struct FAPI_dlSCHConfigPDUInfo_stT
     5: CLOSED_LOOP_RANK_1_PRECODING, 
     6: SINGLE_ANTENNA_PORT_5.  */
     uint8_t                  transmissionScheme;
-
+#ifndef OS_LINUX
+    uint8_t                  transmissionMode;
+#endif
     /* The number of layers used in transmission.
     Value: 1 . 4    */    
     uint8_t                  numOfLayers;
@@ -2288,7 +2111,12 @@ typedef struct FAPI_dlSCHConfigPDUInfo_stT
     /* - TM7_EPRE */
     /* - TM7_8 Changes End */
 #endif    
-   
+
+#ifndef OS_LINUX   
+    /* added by j.zhou */
+    uint8_t         dciFormat;
+    uint8_t			dciPadding[3];
+#endif
  
     /* subBandInfo contains codebook indices per numOfSubBand{ */
     /* Only valid when transmission scheme = 3, 4, 5.
@@ -2400,7 +2228,12 @@ typedef struct FAPI_pchPduConfigInfo_stT
      uint8_t             nGap;
      uint8_t             padding[3];
 #endif
- 
+
+#ifndef OS_LINUX
+     uint8_t			dciFormat;
+     uint8_t			dciPadding[3];
+#endif
+
 }FAPI_pchPduConfigInfo_st;
 /* + PRS_CHANGES */
 typedef struct FAPI_prsPduConfigInfo_stT
@@ -2535,7 +2368,11 @@ typedef struct FAPI_dlHiPduInfo_stT
      /* Offset to the reference signal power.
      Value: 0 . 10000, representing -6 dB to 4 dB in 0.001 dB steps. */
      uint16_t    txPower;
-
+#ifndef OS_LINUX
+     uint8_t  nPhichGrp;
+     uint8_t  nPhichSeq;    
+     uint8_t  padding[2];
+#endif
 }FAPI_dlHiPduInfo_st;
 
 /* ---------------------------------- */
@@ -2905,7 +2742,7 @@ typedef struct FAPI_uciHarqPduInfo_stT
 #ifdef TDD_CONFIG
        FAPI_tddHarqPduInfo_st     harqInfo;
 
-#elif FDD_CONFIG
+#elif defined FDD_CONFIG
        FAPI_fddHarqPduInfo_st     harqInfo;
 #endif
 
@@ -2934,7 +2771,7 @@ typedef struct FAPI_uciSrHarqPduInfo_stT
 #ifdef TDD_CONFIG
        FAPI_tddHarqPduInfo_st     harqInfo;
 
-#elif FDD_CONFIG
+#elif defined FDD_CONFIG
        FAPI_fddHarqPduInfo_st     harqInfo;
 #endif
 
@@ -2969,7 +2806,7 @@ typedef struct FAPI_uciCqiHarqPduInfo_stT
 #ifdef TDD_CONFIG
        FAPI_tddHarqPduInfo_st     harqInfo;
 
-#elif FDD_CONFIG
+#elif defined FDD_CONFIG
        FAPI_fddHarqPduInfo_st     harqInfo;
 #endif
 
@@ -3027,7 +2864,7 @@ typedef struct FAPI_uciCqiSrHarqPduInfo_stT
 #ifdef TDD_CONFIG
        FAPI_tddHarqPduInfo_st     harqInfo;
 
-#elif FDD_CONFIG
+#elif defined FDD_CONFIG
        FAPI_fddHarqPduInfo_st     harqInfo;
 #endif
 
@@ -3050,6 +2887,11 @@ typedef struct FAPI_ulSCHPduInfo_stT
      /* The RNTI used for identifying the UE when receiving the PDU
      Value: 1 . 65535. */
      uint16_t       rnti;
+
+#ifndef OS_LINUX
+     /* added by zj TODO */
+     uint32_t    rntiFlag;
+#endif 
 
      /* The starting resource block for this ULSCH allocation. 
      This should match the value sent in the DCI Format 0 PDU 
@@ -3906,12 +3748,45 @@ typedef struct FAPI_phyCellConfigResp_stT
  * The message is only valid if semi-static configuration is kept in PHY.
  */
 
-typedef struct FAPI_ueConfigRequest_stT
+typedef struct FAPI_phyUeConfigRequest_stT
 {
      uint8_t                numOfTlv;
-     FAPI_ueConfig_st       tlvs[FAPI_VAR_SIZE(numOfTlv)];
+     uint16_t                ueIndex;
+     uint16_t				cfgMode; /* 1:Creat Ue Cfg; 2:Updata Ue Cfg;3:Release Ue */
+     FAPI_ueConfig_st       configtlvs[FAPI_VAR_SIZE(numOfTlv)];
 
-}FAPI_ueConfigRequest_st;
+}FAPI_phyUeConfigRequest_st;
+
+/*  ------------------------------- */
+
+/* PHY UE CONFIG RESPONSE: This defines the message body for
+ * PHY_UE_CONFIG_RESPONSE
+ * The message is only valid if semi-static configuration is kept in PHY.
+ */
+
+typedef struct FAPI_phyUeConfigResp_stT
+{
+  /* Possible values are defined in FAPI_l1ErrorCodes_en. */
+    FAPI_l1ErrorCodes_en    errorCode; 
+
+    /* Number of invalid or unsupported TLVs contained in the message body. */
+    uint8_t                 numOfInvalidOrUnsupportedTLV;
+
+    /* Number of missing TLVs contained in the message body. 
+    If the PHY is in the CONFIGURED state this will always be 0. */
+    uint8_t                 numOfMissingTLV;
+
+/*+ SPR 9285*/
+    uint8_t                 padding;
+/*- SPR 9285*/
+    /* A list of invalid or unsupported TLVs . 
+    each TLV is presented in its entirety. */
+    FAPI_ueConfig_st        listOfTLV[FAPI_VAR_SIZE(numOfInvalidOrUnsupportedTLV)];
+    
+    /* A list of missing TLVs . each TLV is presented in its entirety */
+    FAPI_ueConfig_st        listOfMissingTlv[FAPI_VAR_SIZE(numOfTlv)];
+
+}FAPI_phyUeConfigResp_st;
 
 /*  ------------------------------- */
 
@@ -4177,7 +4052,7 @@ typedef struct FAPI_harqIndication_stT
 #ifdef TDD_CONFIG
     FAPI_tddHarqPduIndication_st harqPduInfo[FAPI_VAR_SIZE(numOfHarq)];
 
-#elif FDD_CONFIG
+#elif defined FDD_CONFIG
     FAPI_fddHarqPduIndication_st harqPduInfo[FAPI_VAR_SIZE(numOfHarq)];
 #endif
 
