@@ -18,8 +18,8 @@
 using namespace ue;
 
 // --------------------------------------------
-UENotSendRlcAck::UENotSendRlcAck(UInt8 ueId, UInt16 raRnti, PhyMacAPI* phyMacAPI, StsCounter* stsCounter)
-: UeTerminal(ueId, raRnti, phyMacAPI, stsCounter)
+UENotSendRlcAck::UENotSendRlcAck(UInt8 ueId, UInt16 raRnti, UInt16 preamble, PhyMacAPI* phyMacAPI, StsCounter* stsCounter)
+: UeTerminal(ueId, raRnti, preamble, phyMacAPI, stsCounter)
 {
 	m_numIdentityReqRecvd = 0;
 	m_numAttachRejRecvd = 0;

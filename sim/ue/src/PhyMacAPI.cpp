@@ -35,6 +35,11 @@ extern "C" void HandleSubFrameInd(void* phyUeSim, UInt16 sfnsf) {
 extern "C" void HandleDlDataRequest(void* phyUeSim, UInt8* buffer, SInt32 length) {
 	((PhyMacAPI*)phyUeSim)->handleDlDataRequest(buffer, length);
 }
+
+extern "C" void UpdateUeConfig(void* phyUeSim, UInt32 numUe, UInt32 numAccessCount) {
+	((PhyMacAPI*)phyUeSim)->updateUeConfig(numUe, numAccessCount);
+}
+
 #endif
 
 // ----------------------------------------
@@ -107,15 +112,29 @@ void PhyMacAPI::handleErrorResult(UdpSocket* theSocket) {
 
 #else
 // ----------------------------------------
+extern "C" void handleCliCommand(void* pPhyUeSim, UInt8* pBuff, UInt32 length);
+BOOL gIsCliCommand = FALSE;
 void PhyMacAPI::handleDlDataRequest(UInt8* theBuffer, SInt32 length) {
 //	LOG_DBG(UE_LOGGER_NAME, "[%s], [%d.%d], m_isRunning = %d\n", __func__, m_sfn, m_sf, m_isRunning);
 	if (m_isRunning) {
 		m_ueScheduler->processDlData(theBuffer, length);
+		if (gIsCliCommand) {
+			handleCliCommand(this, theBuffer, length);
+		}
 	}
 }
 
 #endif
 
+// ----------------------------------------
+void PhyMacAPI::updateUeConfig(UInt32 numUe, UInt32 numAccessCount) {
+	m_ueScheduler->updateUeConfig(numUe, numAccessCount);
+	if (numUe > 0) {
+		m_isRunning = TRUE;
+	}
+}
+
+extern BOOL gStartTest;
 // ----------------------------------------
 void PhyMacAPI::handleSubFrameInd(UInt16 sfnsf) {
 
@@ -128,6 +147,7 @@ void PhyMacAPI::handleSubFrameInd(UInt16 sfnsf) {
     m_ueScheduler->updateSfnSf(m_sfn, m_sf);
     if (!m_ueScheduler->schedule()) {
     	m_isRunning = FALSE;
+    	gStartTest = FALSE;
     	return;
     } else {
     	m_isRunning = TRUE;

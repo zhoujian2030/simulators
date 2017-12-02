@@ -18,8 +18,8 @@
 using namespace ue;
 
 // --------------------------------------------
-UESuspending::UESuspending(UInt8 ueId, UInt16 raRnti, PhyMacAPI* phyMacAPI, StsCounter* stsCounter)
-: UeTerminal(ueId, raRnti, phyMacAPI, stsCounter)
+UESuspending::UESuspending(UInt8 ueId, UInt16 raRnti, UInt16 preamble, PhyMacAPI* phyMacAPI, StsCounter* stsCounter)
+: UeTerminal(ueId, raRnti, preamble, phyMacAPI, stsCounter)
 {
 
 }

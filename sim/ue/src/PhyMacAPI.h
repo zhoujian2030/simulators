@@ -50,6 +50,8 @@ namespace ue {
         void sendData();
         void sendUeConfigResp();
 
+        void updateUeConfig(UInt32 numUe, UInt32 numAccessCount);
+
     private:
 
         friend class UeTerminal;
@@ -59,6 +61,7 @@ namespace ue {
         friend class UESuspending;
         friend class UENotSendRlcAck;
         friend class UESendRrcReestablishmentReq;
+        friend class UeNotSendRlcAndHarqAck;
 
         void resetSendBuffer();
         UInt8* getRachBuffer();

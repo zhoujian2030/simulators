@@ -21,8 +21,8 @@ using namespace ue;
 //#define SEND_IDENTITY_RESP
 
 // --------------------------------------------
-NWRetransmitIdentityReq::NWRetransmitIdentityReq(UInt8 ueId, UInt16 raRnti, PhyMacAPI* phyMacAPI, StsCounter* stsCounter)
-: UeTerminal(ueId, raRnti, phyMacAPI, stsCounter)
+NWRetransmitIdentityReq::NWRetransmitIdentityReq(UInt8 ueId, UInt16 raRnti, UInt16 preamble, PhyMacAPI* phyMacAPI, StsCounter* stsCounter)
+: UeTerminal(ueId, raRnti, preamble, phyMacAPI, stsCounter)
 {
 	m_numIdentityReqRetrans = 0;
 }

@@ -17,7 +17,7 @@ namespace ue {
 
 	class UESendRrcReestablishmentReq : public UeTerminal {
 	public:
-		UESendRrcReestablishmentReq(UInt8 ueId, UInt16 raRnti, PhyMacAPI* phyMacAPI, StsCounter* stsCounter);
+		UESendRrcReestablishmentReq(UInt8 ueId, UInt16 raRnti, UInt16 preamble, PhyMacAPI* phyMacAPI, StsCounter* stsCounter);
 		virtual ~UESendRrcReestablishmentReq();
 
 	protected:

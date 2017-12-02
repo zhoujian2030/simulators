@@ -25,8 +25,11 @@ namespace ue {
 
     class UeTerminal {
     public:
-        UeTerminal(UInt8 ueId, UInt16 raRnti, PhyMacAPI* phyMacAPI, StsCounter* stsCounter);
+        UeTerminal(UInt8 ueId, UInt16 raRnti, UInt16 preamble, PhyMacAPI* phyMacAPI, StsCounter* stsCounter);
         virtual ~UeTerminal();
+
+        void updateConfig(UInt32 maxAccessCount);
+        void showConfig();
 
         void reset();
         virtual void resetChild();
@@ -112,7 +115,7 @@ namespace ue {
         } E_UE_SUB_STATE;
 
         enum {
-            SUBFRAME_SENT_RACH = 1,
+            SUBFRAME_SENT_RACH = 3,//,
             MIN_RAR_LENGTH = 7,
             CONTENTION_RESOLUTION_LENGTH = 7,
             MSG3_LENGTH = 22,
@@ -221,6 +224,7 @@ namespace ue {
         BOOL m_suspend;
 
         UInt32 m_accessCount;
+        UInt32 m_maxAccessCount;
 
         // timer to wait RRC connection setup complete
         SInt32 m_t300Value;
@@ -352,6 +356,8 @@ namespace ue {
         UInt8 m_srSf;
 
         Char8 m_uniqueId[30];
+
+        BOOL m_biRecvd;
     };
 
     // ------------------------------------------------------

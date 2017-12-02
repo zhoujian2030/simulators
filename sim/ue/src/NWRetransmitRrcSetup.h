@@ -17,7 +17,7 @@ namespace ue {
 
 	class NWRetransmitRrcSetup : public UeTerminal {
 	public:
-		NWRetransmitRrcSetup(UInt8 ueId, UInt16 raRnti, PhyMacAPI* phyMacAPI, StsCounter* stsCounter);
+		NWRetransmitRrcSetup(UInt8 ueId, UInt16 raRnti, UInt16 preamble, PhyMacAPI* phyMacAPI, StsCounter* stsCounter);
 		virtual ~NWRetransmitRrcSetup();
 
 	protected:

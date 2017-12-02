@@ -17,7 +17,7 @@ namespace ue {
 
 	class NWRetransmitIdentityReq : public UeTerminal {
 	public:
-		NWRetransmitIdentityReq(UInt8 ueId, UInt16 raRnti, PhyMacAPI* phyMacAPI, StsCounter* stsCounter);
+		NWRetransmitIdentityReq(UInt8 ueId, UInt16 raRnti, UInt16 preamble, PhyMacAPI* phyMacAPI, StsCounter* stsCounter);
 		virtual ~NWRetransmitIdentityReq();
 
 		virtual void resetChild();

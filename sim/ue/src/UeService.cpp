@@ -99,6 +99,7 @@ extern "C" {
 //#define CCS_SIM
 extern void HandleSubFrameInd(void* phyUeSim, UInt16 sfnsf);
 extern void HandleDlDataRequest(void* phyUeSim, UInt8* buffer, SInt32 length);
+extern void UpdateUeConfig(void* phyUeSim, UInt32 numUe, UInt32 numAccessCount);
 extern void* InitUePhySim();
 
 #ifdef CCS_SIM
@@ -240,10 +241,9 @@ void UePhySimTask(void)
 		} else {
 			if (!gStartTest) {
 				if (GetCountOfQmssQ(QMSS_RX_HAND_LAYER2D_FROM_CMAC_CMAC_HARQ_ACK, Qmss_Type_RxHand) > 0) {
-					if( 10 == (bytesRead = RecvMsgFromQmss((void *)msgBuf, QMSS_RX_HAND_LAYER2D_FROM_CMAC_CMAC_HARQ_ACK)))
+					if((bytesRead = RecvMsgFromQmss((void *)msgBuf, QMSS_RX_HAND_LAYER2D_FROM_CMAC_CMAC_HARQ_ACK)) > 0)
 					{
-						LOG_INFO(MODULE_ID_LAYER_MGR, "[%s], recv Start Test req\n", __func__);
-						gStartTest = TRUE;
+						handleCliCommand(pPhyUeSim, msgBuf, bytesRead);
 					}
 				}
 			}
@@ -254,6 +254,46 @@ void UePhySimTask(void)
 		}
 
 	}
+}
+
+
+
+void handleCliCommand(void* pPhyUeSim, UInt8* pBuff, UInt32 length) {
+	if (length < (CLI_MSG_HEAD_LENGTH + sizeof(SetSIMParamReq))) {
+		LOG_ERROR(MODULE_ID_LAYER_MGR, "[%s], Invalid CLI msg, length = %d\n", __func__, length);
+	}
+    UInt16 msgId = 0;
+    UInt16 srcModuleId   = 0;
+    UInt16 destModuleId  = 0;
+    UInt16 msgLen        = 0;
+//    UInt16 transactionId = 0;
+    UInt8* msg_p = pBuff;
+
+//    transactionId =  LTE_GET_U16BIT(msg_p);
+    msg_p += 2;
+    srcModuleId   = LTE_GET_U16BIT(msg_p);
+    msg_p += 2;
+    destModuleId  = LTE_GET_U16BIT(msg_p);
+    msg_p += 2;
+    msgId         = LTE_GET_U16BIT(msg_p);
+    msg_p += 2;
+    msgLen        = LTE_GET_U16BIT(msg_p);
+    msg_p += 2;
+
+//	LOG_INFO(MODULE_ID_LAYER_MGR, "[%s], recv msg length = %d, srcModuleId = 0x%x, dstModuleId = 0x%x, msgId = %d, msgLen = %d\n", __func__,
+//			length, srcModuleId, destModuleId, msgId, msgLen);
+
+	if (msgId == SIM_CLI_SET_PARAM_REQ) {
+		SetSIMParamReq* paramReq = (SetSIMParamReq*)(pBuff + CLI_MSG_HEAD_LENGTH);
+		LOG_INFO(MODULE_ID_LAYER_MGR, "[%s], SET UE Number: %d, Test Time: %d\n", __func__, paramReq->numUe, paramReq->numTestTime);
+
+		gStartTest = TRUE;
+
+		UpdateUeConfig(pPhyUeSim, paramReq->numUe, paramReq->numTestTime);
+	} else {
+		LOG_ERROR(MODULE_ID_LAYER_MGR, "[%s], Invalid msgId = %d\n", __func__, msgId)
+	}
+
 }
 
 Int32 InitSimulator()

@@ -19,8 +19,8 @@
 using namespace ue;
 
 // --------------------------------------------
-UESendRrcReestablishmentReq::UESendRrcReestablishmentReq(UInt8 ueId, UInt16 raRnti, PhyMacAPI* phyMacAPI, StsCounter* stsCounter)
-: UeTerminal(ueId, raRnti, phyMacAPI, stsCounter)
+UESendRrcReestablishmentReq::UESendRrcReestablishmentReq(UInt8 ueId, UInt16 raRnti, UInt16 preamble, PhyMacAPI* phyMacAPI, StsCounter* stsCounter)
+: UeTerminal(ueId, raRnti, preamble, phyMacAPI, stsCounter)
 {
 
 }

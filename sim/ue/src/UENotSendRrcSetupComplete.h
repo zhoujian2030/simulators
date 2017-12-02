@@ -17,7 +17,7 @@ namespace ue {
 
 	class UENotSendRrcSetupComplete : public UeTerminal {
 	public:
-		UENotSendRrcSetupComplete(UInt8 ueId, UInt16 raRnti, PhyMacAPI* phyMacAPI, StsCounter* stsCounter);
+		UENotSendRrcSetupComplete(UInt8 ueId, UInt16 raRnti, UInt16 preamble, PhyMacAPI* phyMacAPI, StsCounter* stsCounter);
 		virtual ~UENotSendRrcSetupComplete();
 
 	protected:

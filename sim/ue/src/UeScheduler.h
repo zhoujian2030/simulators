@@ -12,8 +12,8 @@
 #include <map>
 #include <vector>
 
-#define MAX_UE_SUPPORTED 2 //32
-#define MAX_UE_ACCESS_COUNT 1 //9999999
+#define MAX_UE_SUPPORTED 32
+#define MAX_UE_ACCESS_COUNT 999999
 #define DL_MSG_CONTAINER_SIZE 4 * 4
 
 namespace ue {
@@ -76,6 +76,8 @@ namespace ue {
     public:
         UeScheduler(PhyMacAPI* phyMacAPI, StsCounter* stsCounter);
         ~UeScheduler();
+
+        void updateUeConfig(UInt32 numUe, UInt32 numAccessCount);
 
         void updateSfnSf(UInt16 sfn, UInt8 sf);
 
@@ -176,6 +178,8 @@ namespace ue {
         Node* m_hiDci0NodeHead;
 
         DlMsgBuffer m_ulCfgMsg;
+
+        UInt32 m_numUe;
     };
 
     inline void UeScheduler::updateRntiUeIdMap(UInt16 rnti, UInt8 ueId) {

@@ -17,7 +17,7 @@ namespace ue {
 
 	class UENotSendRlcAck : public UeTerminal {
 	public:
-		UENotSendRlcAck(UInt8 ueId, UInt16 raRnti, PhyMacAPI* phyMacAPI, StsCounter* stsCounter);
+		UENotSendRlcAck(UInt8 ueId, UInt16 raRnti, UInt16 preamble, PhyMacAPI* phyMacAPI, StsCounter* stsCounter);
 		virtual ~UENotSendRlcAck();
 
 		virtual void resetChild();

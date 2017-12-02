@@ -84,16 +84,50 @@ MsgQueueHandle PhySimLogMsgQ_g;
 /***********************mailbox/queue**************************/
 
 /***********************log**************************/
-#define LOG_TASK_RX_MSG_NUM   4096 /* L2ÄÚ²¿LOGÏß³ÌLOG¶ÓÁÐ¿É½ÓÊÕµÄ×î´óLOGÌõÊý */
+#define LOG_TASK_RX_MSG_NUM   4096
 #define LOG_MGR_MSG_PTR_SIZE  sizeof(S_LogFormat)
 
-#define LOG_MGR_MSG_NUM       1024/* Çý¶¯ÕæÕýÌá¹©µÄÊÇ32 */
+#define LOG_MGR_MSG_NUM       1024
 #define LOG_MGR_MSG_SIZE 	  (4 * 1024)
 
-PTR gLogMsgPtrQueue[LOG_TASK_RX_MSG_NUM]; /* ÄÚ²¿´æ·ÅLOG¶ÓÁÐ  */
-S_LogFormat gLogFormatBuf[LOG_TASK_RX_MSG_NUM]; /* ÄÚ²¿´æ·ÅLOG»º´æ */
-S_UserQueueHandle l2LogMsgQueue_g;/* ÄÚ²¿·¢ËÍLOG¶ÓÁÐ */
+PTR gLogMsgPtrQueue[LOG_TASK_RX_MSG_NUM];
+S_LogFormat gLogFormatBuf[LOG_TASK_RX_MSG_NUM];
+S_UserQueueHandle l2LogMsgQueue_g;
 /***********************log**************************/
+
+extern void handleCliCommand(void* pPhyUeSim, UInt8* pBuff, UInt32 length);
+
+#define LTE_GET_U16BIT(p_buff)                                        \
+    ((UInt16)(*(p_buff) << 8) |                                        \
+        (UInt16)(*(p_buff + 1)))
+
+// module id
+#define KPI_MODULE_ID            0x9901
+#define CLI_MODULE_ID            0x9902
+#define SIM_MODULE_ID            0x9903
+#define MAC_MODULE_ID            7
+#define RRC_MODULE_ID            3
+#define RLC_MODULE_ID            6
+#define OAM_MODULE_ID            1
+#define PDCP_MODULE_ID           5
+#define PACKET_RELAY_MODULE_ID   4
+#define RRM_MODULE_ID            2
+#define PHY_MODULE_ID            8
+
+typedef enum {
+    MAC_CLI_SET_LOG_LEVEL_REQ = 0x01,
+    MAC_CLI_SET_COMM_CHAN_RAT2 = 0x02,
+    MAC_CLI_SET_RACH_THRESTHOLD = 0x03,
+
+    SIM_CLI_SET_PARAM_REQ = 0x11
+} CLIReqAPI;
+
+typedef struct {
+    UInt32 numUe;
+    UInt32 numTestTime;
+} SetSIMParamReq;
+
+#define CLI_MSG_HEAD_LENGTH 12
 
 #ifdef __cplusplus
 }

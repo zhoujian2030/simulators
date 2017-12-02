@@ -26,9 +26,9 @@ using namespace std;
 
 const UInt8 UeTerminal::m_ulSubframeList[10] = {0, 0, 1, 0, 0, 0, 0, 1, 0, 0};
 // --------------------------------------------
-UeTerminal::UeTerminal(UInt8 ueId, UInt16 raRnti, PhyMacAPI* phyMacAPI, StsCounter* stsCounter)
-: m_suspend(FALSE), m_accessCount(0), m_phyMacAPI(phyMacAPI), m_ueId(ueId), m_stsCounter(stsCounter),
-  m_raRnti(raRnti), m_preamble(raRnti), m_ta(31),m_rachTa(0), m_state(IDLE),
+UeTerminal::UeTerminal(UInt8 ueId, UInt16 raRnti, UInt16 preamble, PhyMacAPI* phyMacAPI, StsCounter* stsCounter)
+: m_suspend(FALSE), m_accessCount(0), m_maxAccessCount(0), m_phyMacAPI(phyMacAPI), m_ueId(ueId), m_stsCounter(stsCounter),
+  m_raRnti(raRnti), m_preamble(preamble), m_ta(31),m_rachTa(0), m_state(IDLE),
   m_subState(IDLE), m_rachSf(SUBFRAME_SENT_RACH), m_rachSfn(0), m_srConfigIndex(17),
   m_dsrTransMax(64), m_srCounter(0)
 {
@@ -64,6 +64,8 @@ UeTerminal::UeTerminal(UInt8 ueId, UInt16 raRnti, PhyMacAPI* phyMacAPI, StsCount
     m_firstRachSfnSet = FALSE;
 
     m_rachIntervalSfnCnt = 0;
+
+    m_biRecvd = FALSE;
 
     sprintf(m_uniqueId, "[%02x.%04x.%04x]", m_ueId, m_raRnti, 0xffff);
     //LOG_DBG(UE_LOGGER_NAME, "[%s], %s\n",  __func__, m_uniqueId);
@@ -103,12 +105,29 @@ UeTerminal::~UeTerminal() {
 }
 
 // --------------------------------------------
+void UeTerminal::updateConfig(UInt32 maxAccessCount) {
+	m_maxAccessCount = maxAccessCount;
+	m_accessCount = 0;
+}
+
+// --------------------------------------------
+void UeTerminal::showConfig() {
+	LOG_INFO(UE_LOGGER_NAME, "[%s], %s, m_maxAccessCount = %d, m_accessCount = %d\n",  __func__, m_uniqueId, m_maxAccessCount, m_accessCount);
+
+}
+
+// --------------------------------------------
 BOOL UeTerminal::schedule(UInt16 sfn, UInt8 sf, UeScheduler* pUeScheduler) {
     sprintf(&m_uniqueId[14], "-[%04d.%d]", sfn, sf);
     LOG_TRACE(UE_LOGGER_NAME, "[%s], %s\n",  __func__, m_uniqueId);
     
     m_sfn = sfn;
     m_sf = sf;   
+
+    if (m_biRecvd) {
+    	LOG_INFO(UE_LOGGER_NAME, "[%s], %s, receive BI in MSG2, stop scheduling.\n",  __func__, m_uniqueId);
+    	return FALSE;
+    }
 
     if (isT300Expired()) {
         this->reset();
@@ -166,12 +185,85 @@ void UeTerminal::handleDeleteUeReq() {
 
 // --------------------------------------------
 BOOL UeTerminal::scheduleRach(UeScheduler* pUeScheduler) {
-	if (m_accessCount >= MAX_UE_ACCESS_COUNT && m_state == IDLE) {
+	if (m_accessCount >= m_maxAccessCount && m_state == IDLE) {
 		return FALSE;
 	}
 
-	LOG_TRACE(UE_LOGGER_NAME, "[%s], %s\n",  __func__, m_uniqueId);
+	LOG_TRACE(UE_LOGGER_NAME, "[%s], %s, m_state = %d\n",  __func__, m_uniqueId, m_state);
+#if 1
+	if (m_state == IDLE && m_sf == m_rachSf) {
+		// delay some ms after previous access
+		if (m_rachIntervalSfnCnt >= m_maxRachIntervalSfn) {
+			m_rachSfn = m_sfn;
+		} else {
+			m_rachIntervalSfnCnt++;
+			return TRUE;
+		}
 
+		m_rnti = 0;
+		m_raTicks = 0;
+		sprintf(&m_uniqueId[9], "%04x]-[%04d.%d]", 0xffff, m_sfn, m_sf);
+
+		FAPI_l1ApiMsg_st* pL1Api = (FAPI_l1ApiMsg_st *)m_phyMacAPI->getRachBuffer();
+		FAPI_rachIndication_st* pRachInd = (FAPI_rachIndication_st *)&pL1Api->msgBody[0];
+		if (pRachInd->numOfPreamble >= 2) {
+			LOG_INFO(UE_LOGGER_NAME, "[%s], %s, will not send rach in %d.%d, as numOfPreamble is already %d\n",  __func__,
+					m_uniqueId, m_rachSfn, m_rachSf, pRachInd->numOfPreamble);
+			return TRUE;
+		}
+
+		m_accessCount++;
+		if (m_accessCount > m_maxAccessCount) {
+			LOG_INFO(UE_LOGGER_NAME, "[%s], %s, reach m_maxAccessCount = %d, return\n",  __func__, m_maxAccessCount, m_uniqueId);
+			return FALSE;
+		}
+
+		m_rachIntervalSfnCnt = 0;
+
+		UInt32 msgLen = 0;
+		pL1Api->lenVendorSpecific = 0;
+		pL1Api->msgId = PHY_UL_RACH_INDICATION;
+		pRachInd->sfnsf = ( (m_rachSfn) << 4) | ( (m_rachSf) & 0xf);
+		pRachInd->numOfPreamble += 1;
+		UInt32 rachHeaderLen = offsetof(FAPI_rachIndication_st, rachPduInfo);
+
+		FAPI_rachPduIndication_st* pRachPduInd = (FAPI_rachPduIndication_st*)&pRachInd->rachPduInfo[pRachInd->numOfPreamble-1];
+		pRachPduInd->rnti = m_raRnti;
+		pRachPduInd->preamble = m_preamble;
+		pRachPduInd->timingAdvance = m_rachTa;  //TODO
+
+		msgLen += sizeof(FAPI_rachPduIndication_st);
+		pL1Api->msgLen += msgLen;
+
+		m_phyMacAPI->addRachDataLength(msgLen);
+		if (pRachInd->numOfPreamble == 1) {
+			m_phyMacAPI->addRachDataLength(FAPI_HEADER_LENGTH + rachHeaderLen);
+			pL1Api->msgLen += rachHeaderLen;
+		}
+
+		this->startT300();
+		m_state = MSG1_SENT;
+
+		m_stsCounter->countRachSent();
+
+		LOG_INFO(UE_LOGGER_NAME, "[%s], %s, compose rach indication, msgLen = %d\n",  __func__, m_uniqueId, pL1Api->msgLen);
+	} else {
+        // check RACH timer
+        if (m_state == MSG1_SENT || m_state == MSG2_DCI_RECVD || m_state == MSG2_SCH_RECVD) {
+            m_raTicks++;
+            if (m_raTicks <= (subframeDelayAfterRachSent + raResponseWindowSize)) {
+                return TRUE;
+            } else {
+                LOG_ERROR(UE_LOGGER_NAME, "[%s], %s, RACH timeout\n",  __func__, m_uniqueId);
+                m_stsCounter->countRachTimeout();
+                this->reset();
+                m_stsCounter->countTestFailure();
+                pUeScheduler->resetUeTerminal(m_rnti, m_ueId);
+            }
+        }
+    }
+
+#else
     if (!m_firstRachSfnSet) {
         m_rachSfn = (m_sfn + m_rachSfnDelay) % 1024;
         m_firstRachSfnSet = TRUE;
@@ -199,8 +291,8 @@ BOOL UeTerminal::scheduleRach(UeScheduler* pUeScheduler) {
 
         m_accessCount++;
 
-    	if (m_accessCount > MAX_UE_ACCESS_COUNT) {
-    		LOG_INFO(UE_LOGGER_NAME, "[%s], %s, reach MAX_UE_ACCESS_COUNT, return\n",  __func__, m_uniqueId);
+    	if (m_accessCount > m_maxAccessCount) {
+    		LOG_INFO(UE_LOGGER_NAME, "[%s], %s, reach m_maxAccessCount = %d, return\n",  __func__, m_maxAccessCount, m_uniqueId);
     		return FALSE;
     	}
 
@@ -256,6 +348,7 @@ BOOL UeTerminal::scheduleRach(UeScheduler* pUeScheduler) {
             }
         }
     }
+#endif
 
     return TRUE;
 }
@@ -1630,9 +1723,34 @@ BOOL UeTerminal::parseRarPdu(UInt8* data, UInt32 pduLen) {
                 break;
             }
         } else {
-            // BI header
-            // TODO
+        	rarMsg->rapid = data[i] & 0x0f;
             i++;
+            rarMsg->ta = ((data[i] & 0x7f) << 4) | ((data[i+1] & 0xf0) >> 4);
+            ++i;
+            // printf("data[%d] = %02x\n", i, data[i]);
+            UInt32 ulGrantVal = ((data[i] & 0x0f) << 16) | (data[i+1] << 8) | data[i+2];
+            i += 3;
+            // printf("data[%d] = %02x\n", i, data[i]);
+            rarMsg->tcRnti = (data[i] << 8) | data[i+1];
+            ++i;
+
+            // refer to 36.213, section 6.2
+            rarMsg->ulGrant.hoppingFlag = (ulGrantVal >> 19) & 0x01;
+            rarMsg->ulGrant.rbMap = (ulGrantVal >> 9) & 0x3ff;
+            rarMsg->ulGrant.coding = (ulGrantVal >> 5) & 0x0f;
+            rarMsg->ulGrant.tpc = (ulGrantVal >> 2) & 0x03;
+            rarMsg->ulGrant.ulDelay = (ulGrantVal >> 1) & 0x01;
+            rarMsg->ulGrant.cqiReq = ulGrantVal & 0x01;
+
+            LOG_INFO(UE_LOGGER_NAME, "[%s], %s, BI = %d, ta = %d, tcRnti = %d\n",
+                __func__, m_uniqueId, rarMsg->rapid, rarMsg->ta, rarMsg->tcRnti);
+
+            LOG_INFO(UE_LOGGER_NAME, "[%s], %s, tpc = %d, ulDelay = %d, cqiReq = %d\n",
+                __func__, m_uniqueId, rarMsg->ulGrant.tpc, rarMsg->ulGrant.ulDelay, rarMsg->ulGrant.cqiReq);
+
+            result = TRUE;
+
+            m_biRecvd = TRUE;
         }
     } while (ext == 1 && i < pduLen);
 

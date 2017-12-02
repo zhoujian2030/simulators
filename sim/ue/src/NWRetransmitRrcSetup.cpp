@@ -20,8 +20,8 @@ using namespace ue;
 #define MAX_RETRANSMIT_COUNT 4
 
 // --------------------------------------------
-NWRetransmitRrcSetup::NWRetransmitRrcSetup(UInt8 ueId, UInt16 raRnti, PhyMacAPI* phyMacAPI, StsCounter* stsCounter)
-: UeTerminal(ueId, raRnti, phyMacAPI, stsCounter)
+NWRetransmitRrcSetup::NWRetransmitRrcSetup(UInt8 ueId, UInt16 raRnti, UInt16 preamble, PhyMacAPI* phyMacAPI, StsCounter* stsCounter)
+: UeTerminal(ueId, raRnti, preamble, phyMacAPI, stsCounter)
 {
     m_numRRCSetupRetrans = 0;
 }

@@ -18,8 +18,8 @@
 using namespace ue;
 
 // --------------------------------------------
-UENotSendRrcSetupComplete::UENotSendRrcSetupComplete(UInt8 ueId, UInt16 raRnti, PhyMacAPI* phyMacAPI, StsCounter* stsCounter)
-: UeTerminal(ueId, raRnti, phyMacAPI, stsCounter)
+UENotSendRrcSetupComplete::UENotSendRrcSetupComplete(UInt8 ueId, UInt16 raRnti, UInt16 preamble, PhyMacAPI* phyMacAPI, StsCounter* stsCounter)
+: UeTerminal(ueId, raRnti, preamble, phyMacAPI, stsCounter)
 {
 
 }

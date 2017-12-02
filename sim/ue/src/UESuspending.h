@@ -23,7 +23,7 @@ namespace ue {
 
 	class UESuspending : public UeTerminal {
 	public:
-		UESuspending(UInt8 ueId, UInt16 raRnti, PhyMacAPI* phyMacAPI, StsCounter* stsCounter);
+		UESuspending(UInt8 ueId, UInt16 raRnti, UInt16 preamble, PhyMacAPI* phyMacAPI, StsCounter* stsCounter);
 		virtual ~UESuspending();
 
 	protected:

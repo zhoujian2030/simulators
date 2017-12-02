@@ -23,6 +23,7 @@
 #include "UESuspending.h"
 #include "UENotSendRlcAck.h"
 #include "UESendRrcReestablishmentReq.h"
+#include "UeNotSendRlcAndHarqAck.h"
 
 using namespace ue;
 using namespace std;
@@ -79,16 +80,22 @@ UeScheduler::UeScheduler(PhyMacAPI* phyMacAPI, StsCounter* stsCounter)
 {
 	LOG_TRACE(UE_LOGGER_NAME, "[%s], Entry\n", __func__);
 
+	m_numUe = 1;
+
     // The ueId and ra-rnti value is in range 1~MAX_UE_SUPPORTED
     m_ueList = new UeTerminal*[MAX_UE_SUPPORTED];
     for (UInt32 i=0; i<MAX_UE_SUPPORTED; i++) {
-    	 m_ueList[i] = new UeTerminal(i+1, i+1, phyMacAPI, stsCounter);
-//   	    m_ueList[i] = new NWRetransmitRrcSetup(i+1, i+1, phyMacAPI, stsCounter);
-//       m_ueList[i] = new UENotSendRrcSetupComplete(i+1, i+1, phyMacAPI, stsCounter);
-    //    m_ueList[i] = new NWRetransmitIdentityReq(i+1, i+1, phyMacAPI, stsCounter);
-//        m_ueList[i] = new UESuspending(i+1, i+1, phyMacAPI, stsCounter);
-//        m_ueList[i] = new UENotSendRlcAck(i+1, i+1, phyMacAPI, stsCounter);
-		// m_ueList[i] = new UESendRrcReestablishmentReq(i+1, i+1, phyMacAPI, stsCounter);
+    	 m_ueList[i] = new UeTerminal(i+1, i+1, i+1, phyMacAPI, stsCounter);
+//   	    m_ueList[i] = new NWRetransmitRrcSetup(i+1, i+1, i+1, phyMacAPI, stsCounter);
+//       m_ueList[i] = new UENotSendRrcSetupComplete(i+1, i+1, i+1, phyMacAPI, stsCounter);
+    //    m_ueList[i] = new NWRetransmitIdentityReq(i+1, i+1, i+1, phyMacAPI, stsCounter);
+//        m_ueList[i] = new UESuspending(i+1, i+1, phyMacAPI, i+1, stsCounter);
+//        m_ueList[i] = new UENotSendRlcAck(i+1, i+1, i+1, phyMacAPI, stsCounter);
+		// m_ueList[i] = new UESendRrcReestablishmentReq(i+1, i+1, i+1, phyMacAPI, stsCounter);
+//    	m_ueList[i] = new UeTerminal(i+1, 3, i+1, phyMacAPI, stsCounter);
+//        m_ueList[i] = new UeNotSendRlcAndHarqAck(i+1, i+1, i+1, phyMacAPI, stsCounter);
+
+    	 m_ueList[i]->updateConfig(0);
     }
 
     for (UInt32 i=0; i<DL_MSG_CONTAINER_SIZE; i++) {
@@ -109,6 +116,24 @@ UeScheduler::~UeScheduler() {
 }
 
 // ----------------------------------------
+void UeScheduler::updateUeConfig(UInt32 numUe, UInt32 numAccessCount) {
+	for (UInt32 i=0; i<MAX_UE_SUPPORTED; i++) {
+		if (i < numUe) {
+			m_ueList[i]->updateConfig(numAccessCount);
+		} else {
+			m_ueList[i]->updateConfig(0);
+//			m_ueList[i]->reset();
+		}
+	}
+
+	if (numUe < MAX_UE_SUPPORTED) {
+		m_numUe = numUe;
+	} else {
+		m_numUe = MAX_UE_SUPPORTED;
+	}
+}
+
+// ----------------------------------------
 void UeScheduler::updateSfnSf(UInt16 sfn, UInt8 sf) {
 	m_prevSfn = m_sfn;
 	m_prevSf = m_sf;
@@ -124,9 +149,12 @@ void UeScheduler::updateSfnSf(UInt16 sfn, UInt8 sf) {
 }
 
 // ----------------------------------------
+extern BOOL gIsCliCommand;
 #define GENERATE_SUBFRAME_SFNSF(sfn,sf) ( ( (sfn) << 4) | ( (sf) & 0xf) )
 void UeScheduler::processDlData(UInt8* buffer, SInt32 length) {
     LOG_TRACE(UE_LOGGER_NAME, "[%s], Entry \n", __func__);
+
+    gIsCliCommand = FALSE;
 
     FAPI_l1ApiMsg_st *pL1Api = (FAPI_l1ApiMsg_st *)buffer;
 
@@ -205,6 +233,7 @@ void UeScheduler::processDlData(UInt8* buffer, SInt32 length) {
 					case PHY_UE_CONFIG_REQUEST:
 					{
 #endif
+						LOG_INFO(UE_LOGGER_NAME, "[%s], PHY_UE_CONFIG_REQUEST, node = %p\n", __func__, node);
 						if (m_ueConfigNodeHead == 0) {
 							m_ueConfigNodeHead = node;
 							m_ueConfigNodeHead->tail = node;
@@ -217,9 +246,10 @@ void UeScheduler::processDlData(UInt8* buffer, SInt32 length) {
 
 					default:
 					{
-						LOG_ERROR(UE_LOGGER_NAME, "[%s], unsupport msgId\n", __func__);
+						LOG_ERROR(UE_LOGGER_NAME, "[%s], unsupport msgId = %d\n", __func__, pL1Api->msgId);
 						m_dlMsgBufferContainer[i].length = 0;
 						m_nodePool->freeNode(node);
+						gIsCliCommand = TRUE;
 						break;
 					}
                 }
@@ -512,10 +542,12 @@ void UeScheduler::handleUeConfigReq(FAPI_phyUeConfigRequest_st* pUeConfigReq) {
 	if (pUeConfigReq->cfgMode == 1) {
 		handleCreateUeReq(pUeConfigReq->ueIndex, rnti, srConfigIndex);
 		m_ueIndexRntiMap[pUeConfigReq->ueIndex] = rnti;
+//		LOG_INFO(UE_LOGGER_NAME, "[%s], cfgMode = 1, rnti = %d, ueIndex = %d\n", __func__, rnti, pUeConfigReq->ueIndex);
 	} else if (pUeConfigReq->cfgMode == 3){
 		map<UInt16, UInt16>::iterator it = m_ueIndexRntiMap.find(pUeConfigReq->ueIndex);
 		if (it != m_ueIndexRntiMap.end()) {
 			rnti = it->second;
+//			LOG_INFO(UE_LOGGER_NAME, "[%s], cfgMode = 3, rnti = %d, ueIndex = %d\n", __func__, rnti, pUeConfigReq->ueIndex);
 			handleDeleteUeReq(rnti);
 		} else {
 			LOG_ERROR(UE_LOGGER_NAME, "[%s], Invalid ueIndex = %d\n", __func__, pUeConfigReq->ueIndex);
@@ -581,8 +613,10 @@ BOOL UeScheduler::schedule() {
 		for(int i=0; i<numUeSchedule; i++) {
 			if (m_ueList[i] != 0) {
 				if (!m_ueList[i]->schedule(m_sfn, m_sf, this)) {
-					delete m_ueList[i];
-					m_ueList[i] = 0;
+//					LOG_WARN(UE_LOGGER_NAME, "[%s], UE %d is not scheduling\n", __func__, i);
+//					m_ueList[i]->showConfig();
+//					delete m_ueList[i];
+//					m_ueList[i] = 0;
 				} else {
 					isScheduling = TRUE;
 				}
@@ -797,7 +831,7 @@ void UeScheduler::processData() {
         FAPI_l1ApiMsg_st *pL1Api = (FAPI_l1ApiMsg_st *)msgBuffer->data;
 
 #ifndef OS_LINUX
-        LOG_DBG(UE_LOGGER_NAME, "[%s], handle PHY_UE_CONFIG_REQUEST in %d.%d\n", __func__, m_sfn, m_sf);
+        LOG_INFO(UE_LOGGER_NAME, "[%s], handle PHY_UE_CONFIG_REQUEST in %d.%d, node = %p\n", __func__, m_sfn, m_sf, node);
 		FAPI_phyUeConfigRequest_st *pUeConfigReq = (FAPI_phyUeConfigRequest_st *)&pL1Api->msgBody[0];
 		handleUeConfigReq(pUeConfigReq);
 
