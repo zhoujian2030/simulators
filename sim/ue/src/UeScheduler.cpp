@@ -95,7 +95,7 @@ UeScheduler::UeScheduler(PhyMacAPI* phyMacAPI, StsCounter* stsCounter)
 //    	m_ueList[i] = new UeTerminal(i+1, 3, i+1, phyMacAPI, stsCounter);
 //        m_ueList[i] = new UeNotSendRlcAndHarqAck(i+1, i+1, i+1, phyMacAPI, stsCounter);
 
-    	 m_ueList[i]->updateConfig(0);
+        m_ueList[i]->updateConfig(0);
     }
 
     for (UInt32 i=0; i<DL_MSG_CONTAINER_SIZE; i++) {

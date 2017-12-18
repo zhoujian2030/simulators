@@ -190,7 +190,7 @@ BOOL UeTerminal::scheduleRach(UeScheduler* pUeScheduler) {
 	}
 
 	LOG_TRACE(UE_LOGGER_NAME, "[%s], %s, m_state = %d\n",  __func__, m_uniqueId, m_state);
-#if 1
+#if 0
 	if (m_state == IDLE && m_sf == m_rachSf) {
 		// delay some ms after previous access
 		if (m_rachIntervalSfnCnt >= m_maxRachIntervalSfn) {
@@ -206,7 +206,7 @@ BOOL UeTerminal::scheduleRach(UeScheduler* pUeScheduler) {
 
 		FAPI_l1ApiMsg_st* pL1Api = (FAPI_l1ApiMsg_st *)m_phyMacAPI->getRachBuffer();
 		FAPI_rachIndication_st* pRachInd = (FAPI_rachIndication_st *)&pL1Api->msgBody[0];
-		if (pRachInd->numOfPreamble >= 2) {
+		if (pRachInd->numOfPreamble >= 3) {
 			LOG_INFO(UE_LOGGER_NAME, "[%s], %s, will not send rach in %d.%d, as numOfPreamble is already %d\n",  __func__,
 					m_uniqueId, m_rachSfn, m_rachSf, pRachInd->numOfPreamble);
 			return TRUE;

@@ -161,6 +161,7 @@ void UePhySimTask(void)
 					"phySim: [%s] RecvMsg phySimHandlerEventInfo[0x%08x] failure.\n",
 					__func__, phySimHandlerEventInfo);
 		}
+//		LOG_INFO(MODULE_ID_LAYER_MGR, "[%s], running\n", __func__);
 
 		UInt16 sfnsf = (gSysSfn.sfn << 4) | gSysSfn.sf;
 		bytesRead = 0;
@@ -296,6 +297,14 @@ void handleCliCommand(void* pPhyUeSim, UInt8* pBuff, UInt32 length) {
 
 }
 
+void TestTask(void)
+{
+	int i = 1;
+	while (1) {
+		i++;
+	}
+}
+
 Int32 InitSimulator()
 {
 	Int32 i = 0;
@@ -318,8 +327,9 @@ Int32 InitSimulator()
     }
 
 	/* creat task */
-    PhySimLogTask_g = CreateTask((UInt32)Phy_Sim_Log_Task_Priority, (UInt32)Phy_Sim_Log_Task_Stack_Size, PhySimLogTaskStack_g, (void*)ExportLogInfo);
-	PhySimTask_g = CreateTask((UInt32)Phy_Sim_Task_Priority, (UInt32)Phy_Sim_Task_Stack_Size, PhySimTaskStack_g, (void*)UePhySimTask);
+    PhySimLogTask_g = CreateTask((UInt32)LOG_TASK_PRIORITY, (UInt32)LOG_TASK_STACK_SIZE, PhySimLogTaskStack_g, (void*)ExportLogInfo);
+	PhySimTask_g = CreateTask((UInt32)UE_SIM_TASK_PRIORITY, (UInt32)UE_SIM_TASK_STACK_SIZE, PhySimTaskStack_g, (void*)UePhySimTask);
+//	TestTask_g = CreateTask((UInt32)TEST_TASK_PRIORITY, (UInt32)TEST_TASK_STACK_SIZE, TestTaskStack_g, (void*)TestTask);
 
 	/* active task */
 	if(RET_SUCCESS != ActiveTask(&PhySimLogTask_g))

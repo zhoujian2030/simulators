@@ -58,17 +58,22 @@ extern "C" {
 /* task */
 TaskHandle PhySimTask_g;
 TaskHandle PhySimLogTask_g;
+TaskHandle TestTask_g;
 
 /* task priority */
-#define Phy_Sim_Task_Priority 1
-#define Phy_Sim_Log_Task_Priority 2
+#define UE_SIM_TASK_PRIORITY 9
+#define LOG_TASK_PRIORITY 2
+#define TEST_TASK_PRIORITY 1
 
 /* task stack size */
-#define Phy_Sim_Task_Stack_Size (256*1024)
-UInt8	PhySimTaskStack_g[Phy_Sim_Task_Stack_Size];
+#define UE_SIM_TASK_STACK_SIZE (256*1024)
+UInt8	PhySimTaskStack_g[UE_SIM_TASK_STACK_SIZE];
 
-#define Phy_Sim_Log_Task_Stack_Size (256*1024)
-UInt8	PhySimLogTaskStack_g[Phy_Sim_Log_Task_Stack_Size];
+#define LOG_TASK_STACK_SIZE (256*1024)
+UInt8	PhySimLogTaskStack_g[LOG_TASK_STACK_SIZE];
+
+#define TEST_TASK_STACK_SIZE (8*1024)
+UInt8	TestTaskStack_g[TEST_TASK_STACK_SIZE];
 
 /***************************task*******************************/
 
