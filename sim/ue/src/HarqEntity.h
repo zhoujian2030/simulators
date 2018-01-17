@@ -104,7 +104,8 @@ namespace ue {
             };
 
             enum HARQ_TIMER_VALUE {
-                K_PHICH_FOR_TDD_UL_DL_CONFIG_2 = 6
+                K_PHICH_FOR_TDD_UL_DL_CONFIG_2 = 6,
+                HARQ_T_FOR_FDD = 4
             };
 
             friend class UeTerminal;
@@ -157,7 +158,11 @@ namespace ue {
 
     // -------------------------------------------    
     inline void HarqEntity::UlHarqProcess::startTimer() {
+#ifdef TDD_CONFIG
         m_timerValue = K_PHICH_FOR_TDD_UL_DL_CONFIG_2 + 1;
+#else
+        m_timerValue = HARQ_T_FOR_FDD + 1;
+#endif
     }
 
     // -------------------------------------------    

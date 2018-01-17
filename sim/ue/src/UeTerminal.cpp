@@ -106,6 +106,12 @@ UeTerminal::~UeTerminal() {
 
 // --------------------------------------------
 void UeTerminal::updateConfig(UInt32 maxAccessCount) {
+	if (m_accessCount >= m_maxAccessCount && m_state == IDLE) {
+		m_firstRachSent = FALSE;
+		m_firstRachSfnSet = FALSE;
+		m_rachIntervalSfnCnt = 0;
+	}
+
 	m_maxAccessCount = maxAccessCount;
 	m_accessCount = 0;
 }
@@ -1097,6 +1103,7 @@ void UeTerminal::handleDlTxData(FAPI_dlDataTxRequest_st* pDlDataTxHeader, FAPI_d
 
     UInt32 byteLen = pDlTlv->tagLen;
     UInt8* data = (UInt8*)pDlTlv->value;
+    LOG_BUFFER(data, byteLen);
 
     if (m_state == MSG2_SCH_RECVD) {
         UInt16 sfnsf = (m_provSfn << 4) | m_provSf;
@@ -1402,13 +1409,19 @@ void UeTerminal::dlHarqResultCallback(UInt16 harqProcessNum, UInt8 ackFlag, BOOL
             pHarqInd->numOfHarq += 1;
             UInt32 harqHeaderLen = offsetof(FAPI_harqIndication_st, harqPduInfo);
 
+#ifdef TDD_CONFIG
             FAPI_tddHarqPduIndication_st* pTddHarqPduInd = (FAPI_tddHarqPduIndication_st*)&pHarqInd->harqPduInfo[pHarqInd->numOfHarq - 1];        
             pTddHarqPduInd->rnti = m_rnti; 
             pTddHarqPduInd->mode = tddAckNackFeedbackMode;  // 0: bundling, 1: multplexing, 2: special bundling
             pTddHarqPduInd->numOfAckNack += 1;
             pTddHarqPduInd->harqBuffer[0] = ackFlag;
             pTddHarqPduInd->harqBuffer[1] = 0;
-
+#else
+            FAPI_fddHarqPduIndication_st* pFddHarqPduInd = (FAPI_fddHarqPduIndication_st*)&pHarqInd->harqPduInfo[pHarqInd->numOfHarq - 1];
+            pFddHarqPduInd->rnti = m_rnti;
+            pFddHarqPduInd->harqTB1 = ackFlag;
+            pFddHarqPduInd->harqTB2 = 0;
+#endif
             if (m_state == MSG4_RECVD) {
                 // TODO MAC will not check harq value for MSG4, just take all value as ACK
                 //pTddHarqPduInd->harqBuffer[0] = 4;
@@ -1869,11 +1882,6 @@ UInt16 UeTerminal::parseMacCCCHPdu(UInt8* data, UInt32 pduLen) {
 
 // ------------------------------------------------------
 void UeTerminal::setSfnSfForSR(BOOL isRetransmitSR) {
-    // only valid for TDD DL/UL config 2
-
-    // if m_srConfigIndex = 17, ul sf = 2, ul sfn = 0, 2, 4, 6, ...
-    // if m_srConfigIndex = 72, ul sf = 7, ul sfn = 3, 7, 11, 15, ...
-
     // refer to 36.213 Table 10.1-5
     LOG_TRACE(UE_LOGGER_NAME, "[%s], %s, m_srConfigIndex = %d\n",  __func__, m_uniqueId, m_srConfigIndex);
 
@@ -1882,6 +1890,12 @@ void UeTerminal::setSfnSfForSR(BOOL isRetransmitSR) {
     } else {
         m_srCounter++;
     }
+
+#ifdef TDD_CONFIG
+    // only valid for TDD DL/UL config 2
+
+    // if m_srConfigIndex = 17, ul sf = 2, ul sfn = 0, 2, 4, 6, ...
+    // if m_srConfigIndex = 72, ul sf = 7, ul sfn = 3, 7, 11, 15, ...
 
     SInt8 nOffset = 0;
     if ((m_srConfigIndex >= 15) && (m_srConfigIndex <= 34)) {
@@ -1908,6 +1922,23 @@ void UeTerminal::setSfnSfForSR(BOOL isRetransmitSR) {
         LOG_WARN(UE_LOGGER_NAME, "[%s], %s, unimpletemented, TODO\n",  __func__, m_uniqueId);
         return;
     }
+    
+#else
+    SInt8 nOffset = 0;
+    if ((m_srConfigIndex >= 15) && (m_srConfigIndex <= 34)) {
+    	m_srPeriodicity = 20;
+    	nOffset = m_srConfigIndex - 15;
+    } else if ((m_srConfigIndex >= 35) && (m_srConfigIndex <= 74)) {
+    	m_srPeriodicity = 40;
+    	nOffset = m_srConfigIndex - 35;
+    } else {
+        LOG_WARN(UE_LOGGER_NAME, "[%s], %s, unimpletemented, TODO\n",  __func__, m_uniqueId);
+        return;
+    }
+
+    m_srSf = nOffset % 10;
+
+#endif
 
     m_srSfn = m_sfn;
     if (m_sf >= m_srSf) {
@@ -1922,7 +1953,7 @@ void UeTerminal::setSfnSfForSR(BOOL isRetransmitSR) {
         }
         m_srSfn = (m_srSfn + (m_srPeriodicity - tmp) / 10) % 1024;
     }
-    
+
     LOG_INFO(UE_LOGGER_NAME, "[%s], %s, m_srSfnSf = %d.%d\n", __func__, m_uniqueId, m_srSfn, m_srSf);
 
     m_needSendSR = TRUE;

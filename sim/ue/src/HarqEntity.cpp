@@ -85,11 +85,14 @@ BOOL HarqEntity::allocateUlHarqProcess(
         ulSf = ulSf % 10;
         ulSfn = (ulSfn + 1) % 1024;
     }
+
+#ifdef TDD_CONFIG
     if (UeTerminal::m_ulSubframeList[ulSf] != 1) {
         LOG_ERROR(UE_LOGGER_NAME, "[%s], %s, Invalid ulSf = %d\n", __func__, pUeTerminal->m_uniqueId, ulSf);
         pUeTerminal->allocateUlHarqCallback(harqId, FALSE);
         return FALSE;
     }
+#endif
 
     UlHarqProcess* pUlHarqProcess = 0;
     for (UInt32 i=0; i<m_numUlHarqProcess; i++) {
@@ -359,8 +362,13 @@ BOOL HarqEntity::UlHarqProcess::handleAckNack(UInt16 harqId, UInt16 sfnsf, UInt8
 
     LOG_INFO(UE_LOGGER_NAME, "[%s], %s, harqId = %d, hiValue = %d\n", __func__, pUeTerminal->m_uniqueId, harqId, hiValue);
     
+#ifdef TDD_CONFIG
     UInt8 expectedHiSf = (m_sendSf + K_PHICH_FOR_TDD_UL_DL_CONFIG_2) % 10;
     UInt16 expectedHiSfn = (m_sendSfn + (m_sendSf + K_PHICH_FOR_TDD_UL_DL_CONFIG_2) / 10) % 1024;
+#else
+    UInt8 expectedHiSf = (m_sendSf + HARQ_T_FOR_FDD) % 10;
+    UInt16 expectedHiSfn = (m_sendSfn + (m_sendSf + HARQ_T_FOR_FDD) / 10) % 1024;
+#endif
     if (expectedHiSf == sf && expectedHiSfn == sfn) {
         this->stopTimer(); 
         if (hiValue == 1) {
@@ -490,6 +498,7 @@ void HarqEntity::DlHarqProcess::receive(UInt16 sfnsf, UInt8* theBuffer, UInt32 b
 
     pUeTerminal->dlHarqReceiveCallback(m_index, theBuffer, byteLen, TRUE);
 
+#ifdef TDD_CONFIG
     // only valid for TDD DL/UL config 2
     if (m_recvSf == 4 || m_recvSf == 5 || m_recvSf == 6 || m_recvSf == 8) {
         m_harqAckSf = 2;
@@ -502,6 +511,14 @@ void HarqEntity::DlHarqProcess::receive(UInt16 sfnsf, UInt8* theBuffer, UInt32 b
             m_harqAckSfn = (m_recvSfn + 1) % 1024;
         }
     }
+#else
+    m_harqAckSf = m_recvSf + 4;
+    m_harqAckSfn = m_recvSfn;
+    if (m_harqAckSf > 9) {
+    	m_harqAckSf = m_harqAckSf % 10;
+    	m_harqAckSfn = (m_harqAckSfn + 1) % 1024;
+    }
+#endif
 
     m_state = TB_RECEIVED;
 

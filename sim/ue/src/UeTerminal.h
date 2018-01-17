@@ -115,7 +115,7 @@ namespace ue {
         } E_UE_SUB_STATE;
 
         enum {
-            SUBFRAME_SENT_RACH = 3,//,
+            SUBFRAME_SENT_RACH = 1,//,
             MIN_RAR_LENGTH = 7,
             CONTENTION_RESOLUTION_LENGTH = 7,
             MSG3_LENGTH = 22,
@@ -380,6 +380,7 @@ namespace ue {
         UInt8 minK1 = 6;
         UInt8 sf = m_provSf + minK1;
         UInt16 sfn = m_provSfn;
+#ifdef TDD_CONFIG
         BOOL foundFirstUlSf = FALSE;
         while (1) {
             if (sf >= 10) {
@@ -410,6 +411,14 @@ namespace ue {
 
             ++sf;
         }
+#else
+        if (sf >= 10) {
+			sf = sf - 10;
+			sfn = (sfn + 1) % 1024;
+		}
+        m_msg3Sf = sf;
+        m_msg3Sfn = sfn;
+#endif
     }
 
     // --------------------------------------------------------
