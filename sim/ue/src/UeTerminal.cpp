@@ -901,7 +901,12 @@ void UeTerminal::buildRRCSetupComplete() {
     // 12 1E 00 40 08 04 02 60 04 00 
     // 02 1F 00 5D 01 00 E0 C1 60
     UInt8 rrcSetupCompl[RRC_SETUP_COMPLETE_LENGTH] = { 
-        0x3D, 0x21, 0x4b, 0x1F, 0x00, 0xA0, 0x00, 0x00,
+#if 1
+        0x3D, 0x21, 0x4b, 0x1F, 0x00, 0xA0, 0x00, 0x00,  // need RLC status report
+#else
+        0x3D, 0x21, 0x4b, 0x1F, 0x00, 0x80, 0x00, 0x00,  // no need RLC status report
+#endif
+
 #if 0
         0x22, 0x30, 0x03, 0x62, 0xD2, 0x7A, 0x17, 0xEB, 0xE5, 0x0E, 
         0xDA, 0x08, 0x07, 0x41, 0x12, 0x0B, 0xF6, 0x64, 0xF0, 0x00, 
@@ -1446,8 +1451,15 @@ void UeTerminal::dlHarqResultCallback(UInt16 harqProcessNum, UInt8 ackFlag, BOOL
                 pL1Api->msgLen += harqHeaderLen;
             }       
         } else {
+#ifdef TDD_CONFIG
             FAPI_tddHarqPduIndication_st* pTddHarqPduInd = (FAPI_tddHarqPduIndication_st*)&pHarqInd->harqPduInfo[pHarqInd->numOfHarq - 1]; 
             pTddHarqPduInd->numOfAckNack += 1;   
+#else
+            LOG_INFO(UE_LOGGER_NAME, "[%s], %s, TODO send HARQ ACK for harqTB2\n", __func__, m_uniqueId);
+            FAPI_fddHarqPduIndication_st* pFddHarqPduInd = (FAPI_fddHarqPduIndication_st*)&pHarqInd->harqPduInfo[pHarqInd->numOfHarq - 1];
+            pFddHarqPduInd->rnti = m_rnti;
+            pFddHarqPduInd->harqTB2 = ackFlag;
+#endif
         }
 
         // it counts number of ACK needs to sent for DL TB, 
