@@ -57,14 +57,15 @@ void UENotSendRrcSetupComplete::dlHarqResultCallback(UInt16 harqProcessNum, UInt
             pTddHarqPduInd->numOfAckNack += 1;
             pTddHarqPduInd->harqBuffer[0] = ackFlag;
             pTddHarqPduInd->harqBuffer[1] = 0;
+            msgLen += sizeof(FAPI_tddHarqPduIndication_st);
 #else
             FAPI_fddHarqPduIndication_st* pFddHarqPduInd = (FAPI_fddHarqPduIndication_st*)&pHarqInd->harqPduInfo[pHarqInd->numOfHarq - 1];
             pFddHarqPduInd->rnti = m_rnti;
             pFddHarqPduInd->harqTB1 = ackFlag;
             pFddHarqPduInd->harqTB2 = 0;
+            msgLen += sizeof(FAPI_fddHarqPduIndication_st);
 #endif
 
-			msgLen += sizeof(FAPI_tddHarqPduIndication_st);
 			pL1Api->msgLen += msgLen;
 
 			m_phyMacAPI->addHarqDataLength(msgLen);

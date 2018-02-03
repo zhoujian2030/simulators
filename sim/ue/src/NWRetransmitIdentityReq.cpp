@@ -18,7 +18,7 @@
 using namespace ue;
 
 #define MAX_RETRANSMIT_COUNT 8
-//#define SEND_IDENTITY_RESP
+#define SEND_IDENTITY_RESP
 
 // --------------------------------------------
 NWRetransmitIdentityReq::NWRetransmitIdentityReq(UInt8 ueId, UInt16 raRnti, UInt16 preamble, PhyMacAPI* phyMacAPI, StsCounter* stsCounter)
@@ -57,14 +57,21 @@ void NWRetransmitIdentityReq::dlHarqResultCallback(UInt16 harqProcessNum, UInt8 
 				pHarqInd->numOfHarq += 1;
 				UInt32 harqHeaderLen = offsetof(FAPI_harqIndication_st, harqPduInfo);
 
+#ifdef TDD_CONFIG
 				FAPI_tddHarqPduIndication_st* pTddHarqPduInd = (FAPI_tddHarqPduIndication_st*)&pHarqInd->harqPduInfo[pHarqInd->numOfHarq - 1];
 				pTddHarqPduInd->rnti = m_rnti;
 				pTddHarqPduInd->mode = tddAckNackFeedbackMode;  // 0: bundling, 1: multplexing, 2: special bundling
 				pTddHarqPduInd->numOfAckNack += 1;
 				pTddHarqPduInd->harqBuffer[0] = ackFlag;
 				pTddHarqPduInd->harqBuffer[1] = 0;
-
-				msgLen += sizeof(FAPI_tddHarqPduIndication_st);
+	            msgLen += sizeof(FAPI_tddHarqPduIndication_st);
+#else
+				FAPI_fddHarqPduIndication_st* pFddHarqPduInd = (FAPI_fddHarqPduIndication_st*)&pHarqInd->harqPduInfo[pHarqInd->numOfHarq - 1];
+				pFddHarqPduInd->rnti = m_rnti;
+				pFddHarqPduInd->harqTB1 = ackFlag;
+				pFddHarqPduInd->harqTB2 = 0;
+	            msgLen += sizeof(FAPI_fddHarqPduIndication_st);
+#endif
 				pL1Api->msgLen += msgLen;
 
 				m_phyMacAPI->addHarqDataLength(msgLen);
@@ -84,14 +91,21 @@ void NWRetransmitIdentityReq::dlHarqResultCallback(UInt16 harqProcessNum, UInt8 
 				pHarqInd->numOfHarq += 1;
 				UInt32 harqHeaderLen = offsetof(FAPI_harqIndication_st, harqPduInfo);
 
+#ifdef TDD_CONFIG
 				FAPI_tddHarqPduIndication_st* pTddHarqPduInd = (FAPI_tddHarqPduIndication_st*)&pHarqInd->harqPduInfo[pHarqInd->numOfHarq - 1];
 				pTddHarqPduInd->rnti = m_rnti;
 				pTddHarqPduInd->mode = tddAckNackFeedbackMode;  // 0: bundling, 1: multplexing, 2: special bundling
 				pTddHarqPduInd->numOfAckNack += 1;
 				pTddHarqPduInd->harqBuffer[0] = 4;
 				pTddHarqPduInd->harqBuffer[1] = 0;
-
-				msgLen += sizeof(FAPI_tddHarqPduIndication_st);
+	            msgLen += sizeof(FAPI_tddHarqPduIndication_st);
+#else
+				FAPI_fddHarqPduIndication_st* pFddHarqPduInd = (FAPI_fddHarqPduIndication_st*)&pHarqInd->harqPduInfo[pHarqInd->numOfHarq - 1];
+				pFddHarqPduInd->rnti = m_rnti;
+				pFddHarqPduInd->harqTB1 = 4;
+				pFddHarqPduInd->harqTB2 = 0;
+	            msgLen += sizeof(FAPI_fddHarqPduIndication_st);
+#endif
 				pL1Api->msgLen += msgLen;
 
 				m_phyMacAPI->addHarqDataLength(msgLen);
@@ -115,8 +129,15 @@ void NWRetransmitIdentityReq::dlHarqResultCallback(UInt16 harqProcessNum, UInt8 
                 // TODO
             }
         } else {
+#ifdef TDD_CONFIG
             FAPI_tddHarqPduIndication_st* pTddHarqPduInd = (FAPI_tddHarqPduIndication_st*)&pHarqInd->harqPduInfo[pHarqInd->numOfHarq - 1];
             pTddHarqPduInd->numOfAckNack += 1;
+#else
+            LOG_INFO(UE_LOGGER_NAME, "[%s], %s, TODO send HARQ ACK for harqTB2\n", __func__, m_uniqueId);
+            FAPI_fddHarqPduIndication_st* pFddHarqPduInd = (FAPI_fddHarqPduIndication_st*)&pHarqInd->harqPduInfo[pHarqInd->numOfHarq - 1];
+            pFddHarqPduInd->rnti = m_rnti;
+            pFddHarqPduInd->harqTB2 = ackFlag;
+#endif
         }
 
         // it counts number of ACK needs to sent for DL TB,

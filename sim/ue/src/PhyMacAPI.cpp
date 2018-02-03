@@ -163,6 +163,15 @@ void PhyMacAPI::handleSubFrameInd(UInt16 sfnsf) {
     this->sendData();
 
     m_stsCounter->show();
+
+#if 0
+    static BOOL foundException = FALSE;
+    if ((m_stsCounter->getNumHarqTimeout() > 1) && !foundException) {
+    	LOG_WARN(UE_LOGGER_NAME, "[%s], [%d.%d], STOP testing!!!\n", __func__, m_sfn, m_sf);
+    	updateUeConfig(0, 0);
+    	foundException = TRUE;
+    }
+#endif
 }
 
 // ----------------------------------------

@@ -24,6 +24,7 @@
 #include "UENotSendRlcAck.h"
 #include "UESendRrcReestablishmentReq.h"
 #include "UeNotSendRlcAndHarqAck.h"
+#include "UENotSendIdentityResp.h"
 
 using namespace ue;
 using namespace std;
@@ -88,14 +89,15 @@ UeScheduler::UeScheduler(PhyMacAPI* phyMacAPI, StsCounter* stsCounter)
     	 m_ueList[i] = new UeTerminal(i+1, i+1, i+1, phyMacAPI, stsCounter);
 //   	    m_ueList[i] = new NWRetransmitRrcSetup(i+1, i+1, i+1, phyMacAPI, stsCounter);
 //       m_ueList[i] = new UENotSendRrcSetupComplete(i+1, i+1, i+1, phyMacAPI, stsCounter);
-    //    m_ueList[i] = new NWRetransmitIdentityReq(i+1, i+1, i+1, phyMacAPI, stsCounter);
+//        m_ueList[i] = new NWRetransmitIdentityReq(i+1, i+1, i+1, phyMacAPI, stsCounter);
 //        m_ueList[i] = new UESuspending(i+1, i+1, phyMacAPI, i+1, stsCounter);
 //        m_ueList[i] = new UENotSendRlcAck(i+1, i+1, i+1, phyMacAPI, stsCounter);
 		// m_ueList[i] = new UESendRrcReestablishmentReq(i+1, i+1, i+1, phyMacAPI, stsCounter);
 //    	m_ueList[i] = new UeTerminal(i+1, 3, i+1, phyMacAPI, stsCounter);
 //        m_ueList[i] = new UeNotSendRlcAndHarqAck(i+1, i+1, i+1, phyMacAPI, stsCounter);
+//    	 m_ueList[i] = new UENotSendIdentityResp(i+1, i+1, i+1, phyMacAPI, stsCounter);
 
-        m_ueList[i]->updateConfig(0);
+    	 m_ueList[i]->updateConfig(0);
     }
 
     for (UInt32 i=0; i<DL_MSG_CONTAINER_SIZE; i++) {

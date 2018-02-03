@@ -65,6 +65,9 @@ namespace ue {
         void countRRCSetupRetransmit();
         void countIdentityReqRetransmit();
 
+        UInt32 getNumHarqTimeout();
+        UInt32 getNumInvalidState();
+
     private:
         StsCounter();
 
@@ -138,6 +141,16 @@ namespace ue {
 
         UInt32 m_identityReqRetransmit;
     };
+
+    // -----------------------------------------
+    inline UInt32 StsCounter::getNumHarqTimeout() {
+    	return this->m_harqTimeout;
+    }
+
+    // -----------------------------------------
+    inline UInt32 StsCounter::getNumInvalidState() {
+    	return this->m_invalidState;
+    }
 
     // -----------------------------------------
 	inline void StsCounter::countIdentityReqRetransmit() {
