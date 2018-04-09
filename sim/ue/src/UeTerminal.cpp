@@ -131,7 +131,12 @@ BOOL UeTerminal::schedule(UInt16 sfn, UInt8 sf, UeScheduler* pUeScheduler) {
     m_sf = sf;   
 
     if (m_biRecvd) {
-    	LOG_INFO(UE_LOGGER_NAME, "[%s], %s, receive BI in MSG2, stop scheduling.\n",  __func__, m_uniqueId);
+    	static UInt16 cnt = 0;
+    	cnt++;
+    	if (cnt > 1000) {
+    		cnt = 0;
+    		LOG_INFO(UE_LOGGER_NAME, "[%s], %s, receive BI in MSG2, stop scheduling.\n",  __func__, m_uniqueId);
+    	}
     	return FALSE;
     }
 

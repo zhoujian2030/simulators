@@ -62,6 +62,7 @@ namespace ue {
         friend class UENotSendRlcAck;
         friend class UESendRrcReestablishmentReq;
         friend class UeNotSendRlcAndHarqAck;
+        friend class UENotSendHarqAckForMsg4;
 
         void resetSendBuffer();
         UInt8* getRachBuffer();

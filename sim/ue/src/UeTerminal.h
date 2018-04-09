@@ -115,7 +115,7 @@ namespace ue {
         } E_UE_SUB_STATE;
 
         enum {
-            SUBFRAME_SENT_RACH = 1,//,
+            SUBFRAME_SENT_RACH = 3,//,
             MIN_RAR_LENGTH = 7,
             CONTENTION_RESOLUTION_LENGTH = 7,
             MSG3_LENGTH = 22,

@@ -25,6 +25,7 @@
 #include "UESendRrcReestablishmentReq.h"
 #include "UeNotSendRlcAndHarqAck.h"
 #include "UENotSendIdentityResp.h"
+#include "UENotSendHarqAckForMsg4.h"
 
 using namespace ue;
 using namespace std;
@@ -85,7 +86,26 @@ UeScheduler::UeScheduler(PhyMacAPI* phyMacAPI, StsCounter* stsCounter)
 
     // The ueId and ra-rnti value is in range 1~MAX_UE_SUPPORTED
     m_ueList = new UeTerminal*[MAX_UE_SUPPORTED];
+#if 1
     for (UInt32 i=0; i<MAX_UE_SUPPORTED; i++) {
+    	 m_ueList[i] = new UeTerminal(i+1, i+1, i+1, phyMacAPI, stsCounter);
+//   	    m_ueList[i] = new NWRetransmitRrcSetup(i+1, i+1, i+1, phyMacAPI, stsCounter);
+//       m_ueList[i] = new UENotSendRrcSetupComplete(i+1, i+1, i+1, phyMacAPI, stsCounter);
+//        m_ueList[i] = new NWRetransmitIdentityReq(i+1, i+1, i+1, phyMacAPI, stsCounter);
+//        m_ueList[i] = new UESuspending(i+1, i+1, phyMacAPI, i+1, stsCounter);
+//        m_ueList[i] = new UENotSendRlcAck(i+1, i+1, i+1, phyMacAPI, stsCounter);
+//		 m_ueList[i] = new UESendRrcReestablishmentReq(i+1, i+1, i+1, phyMacAPI, stsCounter);
+//    	m_ueList[i] = new UeTerminal(i+1, 3, i+1, phyMacAPI, stsCounter);
+//        m_ueList[i] = new UeNotSendRlcAndHarqAck(i+1, i+1, i+1, phyMacAPI, stsCounter);
+//    	 m_ueList[i] = new UENotSendIdentityResp(i+1, i+1, i+1, phyMacAPI, stsCounter);
+//		 m_ueList[i] = new UENotSendHarqAckForMsg4(i+1, i+1, i+1, phyMacAPI, stsCounter);
+
+    	 m_ueList[i]->updateConfig(0);
+    }
+#else
+
+    UInt16 count = 15;
+    for (UInt32 i=0; i<count; i++) {
     	 m_ueList[i] = new UeTerminal(i+1, i+1, i+1, phyMacAPI, stsCounter);
 //   	    m_ueList[i] = new NWRetransmitRrcSetup(i+1, i+1, i+1, phyMacAPI, stsCounter);
 //       m_ueList[i] = new UENotSendRrcSetupComplete(i+1, i+1, i+1, phyMacAPI, stsCounter);
@@ -99,6 +119,54 @@ UeScheduler::UeScheduler(PhyMacAPI* phyMacAPI, StsCounter* stsCounter)
 
     	 m_ueList[i]->updateConfig(0);
     }
+
+    for (UInt32 i=count; i<(count + 1); i++) {
+    	 m_ueList[i] = new UeTerminal(i+1, i+1, i+1, phyMacAPI, stsCounter);
+//   	    m_ueList[i] = new NWRetransmitRrcSetup(i+1, i+1, i+1, phyMacAPI, stsCounter);
+//       m_ueList[i] = new UENotSendRrcSetupComplete(i+1, i+1, i+1, phyMacAPI, stsCounter);
+//        m_ueList[i] = new NWRetransmitIdentityReq(i+1, i+1, i+1, phyMacAPI, stsCounter);
+//        m_ueList[i] = new UESuspending(i+1, i+1, phyMacAPI, i+1, stsCounter);
+//        m_ueList[i] = new UENotSendRlcAck(i+1, i+1, i+1, phyMacAPI, stsCounter);
+		// m_ueList[i] = new UESendRrcReestablishmentReq(i+1, i+1, i+1, phyMacAPI, stsCounter);
+//    	m_ueList[i] = new UeTerminal(i+1, 3, i+1, phyMacAPI, stsCounter);
+//        m_ueList[i] = new UeNotSendRlcAndHarqAck(i+1, i+1, i+1, phyMacAPI, stsCounter);
+//    	 m_ueList[i] = new UENotSendIdentityResp(i+1, i+1, i+1, phyMacAPI, stsCounter);
+
+    	 m_ueList[i]->updateConfig(0);
+    }
+
+    count++;
+    for (UInt32 i=count; i<(count + 3); i++) {
+    	 m_ueList[i] = new UeTerminal(i+1, i+1, i+1, phyMacAPI, stsCounter);
+//   	    m_ueList[i] = new NWRetransmitRrcSetup(i+1, i+1, i+1, phyMacAPI, stsCounter);
+//       m_ueList[i] = new UENotSendRrcSetupComplete(i+1, i+1, i+1, phyMacAPI, stsCounter);
+//        m_ueList[i] = new NWRetransmitIdentityReq(i+1, i+1, i+1, phyMacAPI, stsCounter);
+//        m_ueList[i] = new UESuspending(i+1, i+1, phyMacAPI, i+1, stsCounter);
+//        m_ueList[i] = new UENotSendRlcAck(i+1, i+1, i+1, phyMacAPI, stsCounter);
+		// m_ueList[i] = new UESendRrcReestablishmentReq(i+1, i+1, i+1, phyMacAPI, stsCounter);
+//    	m_ueList[i] = new UeTerminal(i+1, 3, i+1, phyMacAPI, stsCounter);
+//        m_ueList[i] = new UeNotSendRlcAndHarqAck(i+1, i+1, i+1, phyMacAPI, stsCounter);
+//    	 m_ueList[i] = new UENotSendIdentityResp(i+1, i+1, i+1, phyMacAPI, stsCounter);
+
+    	 m_ueList[i]->updateConfig(0);
+    }
+
+    count += 3;
+    for (UInt32 i=count; i<(count + 3); i++) {
+//    	 m_ueList[i] = new UeTerminal(i+1, i+1, i+1, phyMacAPI, stsCounter);
+//   	    m_ueList[i] = new NWRetransmitRrcSetup(i+1, i+1, i+1, phyMacAPI, stsCounter);
+//       m_ueList[i] = new UENotSendRrcSetupComplete(i+1, i+1, i+1, phyMacAPI, stsCounter);
+//        m_ueList[i] = new NWRetransmitIdentityReq(i+1, i+1, i+1, phyMacAPI, stsCounter);
+//        m_ueList[i] = new UESuspending(i+1, i+1, phyMacAPI, i+1, stsCounter);
+//        m_ueList[i] = new UENotSendRlcAck(i+1, i+1, i+1, phyMacAPI, stsCounter);
+		 m_ueList[i] = new UESendRrcReestablishmentReq(i+1, i+1, i+1, phyMacAPI, stsCounter);
+//    	m_ueList[i] = new UeTerminal(i+1, 3, i+1, phyMacAPI, stsCounter);
+//        m_ueList[i] = new UeNotSendRlcAndHarqAck(i+1, i+1, i+1, phyMacAPI, stsCounter);
+//    	 m_ueList[i] = new UENotSendIdentityResp(i+1, i+1, i+1, phyMacAPI, stsCounter);
+
+    	 m_ueList[i]->updateConfig(0);
+    }
+#endif
 
     for (UInt32 i=0; i<DL_MSG_CONTAINER_SIZE; i++) {
         m_dlMsgBufferContainer[i].length = 0;
