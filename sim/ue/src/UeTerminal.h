@@ -28,6 +28,8 @@ namespace ue {
         UeTerminal(UInt8 ueId, UInt16 raRnti, UInt16 preamble, PhyMacAPI* phyMacAPI, StsCounter* stsCounter);
         virtual ~UeTerminal();
 
+        UInt8 getUeId();
+
         void updateConfig(UInt32 maxAccessCount);
         void showConfig();
 
@@ -419,6 +421,11 @@ namespace ue {
         m_msg3Sf = sf;
         m_msg3Sfn = sfn;
 #endif
+    }
+
+    // --------------------------------------------------------
+    inline UInt8 UeTerminal::getUeId() {
+    	return m_ueId;
     }
 
     // --------------------------------------------------------

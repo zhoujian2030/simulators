@@ -145,6 +145,24 @@ void PhyMacAPI::handleSubFrameInd(UInt16 sfnsf) {
     this->resetSendBuffer();
 
     m_ueScheduler->updateSfnSf(m_sfn, m_sf);
+
+#if 1
+    static BOOL foundException = FALSE;
+    if ((m_stsCounter->getNumHarqTimeout() > 1) && !foundException) {
+    	LOG_WARN(UE_LOGGER_NAME, "[%s], [%d.%d], HARQ timeout, STOP testing!!!\n", __func__, m_sfn, m_sf);
+    	updateUeConfig(0, 0);
+    	foundException = TRUE;
+    } else if ((m_stsCounter->getNumRlcTimeout() > 1) && !foundException) {
+    	LOG_WARN(UE_LOGGER_NAME, "[%s], [%d.%d], RLC timeout, STOP testing!!!\n", __func__, m_sfn, m_sf);
+    	updateUeConfig(0, 0);
+    	foundException = TRUE;
+    } else if ((m_stsCounter->getNumContResolTimeout() > 1) && !foundException) {
+//    	LOG_WARN(UE_LOGGER_NAME, "[%s], [%d.%d], Contention resolution timeout, STOP testing!!!\n", __func__, m_sfn, m_sf);
+//    	updateUeConfig(0, 0);
+//    	foundException = TRUE;
+    }
+#endif
+
     if (!m_ueScheduler->schedule()) {
     	m_isRunning = FALSE;
     	gStartTest = FALSE;
@@ -163,15 +181,6 @@ void PhyMacAPI::handleSubFrameInd(UInt16 sfnsf) {
     this->sendData();
 
     m_stsCounter->show();
-
-#if 0
-    static BOOL foundException = FALSE;
-    if ((m_stsCounter->getNumHarqTimeout() > 1) && !foundException) {
-    	LOG_WARN(UE_LOGGER_NAME, "[%s], [%d.%d], STOP testing!!!\n", __func__, m_sfn, m_sf);
-    	updateUeConfig(0, 0);
-    	foundException = TRUE;
-    }
-#endif
 }
 
 // ----------------------------------------

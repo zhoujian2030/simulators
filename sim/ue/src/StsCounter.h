@@ -64,9 +64,12 @@ namespace ue {
         void countRRCConnRej();
         void countRRCSetupRetransmit();
         void countIdentityReqRetransmit();
+        void countRlcTimeout();
 
         UInt32 getNumHarqTimeout();
         UInt32 getNumInvalidState();
+        UInt32 getNumRlcTimeout();
+        UInt32 getNumContResolTimeout();
 
     private:
         StsCounter();
@@ -140,7 +143,19 @@ namespace ue {
         UInt32 m_rrcSetupRetransmit;
 
         UInt32 m_identityReqRetransmit;
+
+        UInt32 m_rlcTimeout;
     };
+
+	// -----------------------------------------
+    inline UInt32 StsCounter::getNumContResolTimeout() {
+    	return this->m_contentionResolutionTimeout;
+    }
+
+    // -----------------------------------------
+    inline UInt32 StsCounter::getNumRlcTimeout() {
+    	return this->m_rlcTimeout;
+    }
 
     // -----------------------------------------
     inline UInt32 StsCounter::getNumHarqTimeout() {
@@ -151,6 +166,12 @@ namespace ue {
     inline UInt32 StsCounter::getNumInvalidState() {
     	return this->m_invalidState;
     }
+
+    // -----------------------------------------
+	inline void StsCounter::countRlcTimeout() {
+		m_rlcTimeout++;
+		m_isChanged = TRUE;
+	}
 
     // -----------------------------------------
 	inline void StsCounter::countIdentityReqRetransmit() {

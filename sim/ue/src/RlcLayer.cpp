@@ -30,6 +30,8 @@ RlcLayer::RlcLayer(UeTerminal* ue, PdcpLayer* pdcpLayer)
     // RRC setup complete id the first AM PDU sent with sn = 0,
     // which is not built by RLcLayer currently
     m_sn = 1;
+    m_ackSn = 0;
+    m_timerValue = -1;
 }
 
 // -------------------------------------
@@ -91,18 +93,63 @@ void RlcLayer::handleRxAMDPdu(UInt8* buffer, UInt32 length) {
 //        LOG_DBG(UE_LOGGER_NAME, "[%s], so = %d\n", __func__, m_amdHeader.so);
 
         reassembleAMDPdu(&m_amdHeader, &buffer[2], length-2);
-    }     
+    } else {
+    	//
+    	UInt8 cpt = (buffer[idx] >> 4) & 0x07;
+    	if (cpt == 0) {
+    		m_ackSn = ((buffer[idx] & 0x0f) << 6) | ((buffer[idx+1] >> 2) &0x3f);
+        	LOG_INFO(UE_LOGGER_NAME, "[%s], receive rlc status PDU, m_ackSn = %d, m_sn = %d, SDU length = %d, ueId = %02x\n", __func__, m_ackSn, m_sn, length, m_ue->getUeId());
+        	//TODO
+        	stopTimer();
+    	}
+    }
 }
 
 // -------------------------------------
 void RlcLayer::buildRlcAMDHeader(UInt8* buffer, UInt32& length) {
     // only support single segment SDU
     memmove(buffer+2, buffer, length);
+#if 1
     buffer[0] = 0x80 | 0x20 | ((m_sn >> 8) & 0x03); // dc = 1, p = 1, need status report
+#else
+    buffer[0] = 0x80 | 0x00 | ((m_sn >> 8) & 0x03); // dc = 1, p = 0, no need status report
+#endif
     buffer[1] = m_sn & 0xff;
     length += 2;
 
     m_sn = (++m_sn)%1024;
+
+    startTimer();
+}
+
+// -------------------------------------
+void RlcLayer::startTimer() {
+	if (m_timerValue <= 0) {
+		m_timerValue = 60;
+	} else {
+		LOG_WARN(UE_LOGGER_NAME, "[%s], not receive RLC ACK for last RLC PDU, m_sn = %d, m_ackSn = %d, ueId = %02x\n", __func__, m_sn, m_ackSn, m_ue->getUeId());
+	}
+}
+
+// -------------------------------------
+BOOL RlcLayer::processTimer() {
+	if (m_timerValue < 0) {
+		return FALSE;
+	}
+
+	if (m_timerValue == 0) {
+		LOG_WARN(UE_LOGGER_NAME, "[%s], receive RLC ACK timeout, m_sn = %d, m_ackSn = %d, ueId = %02x\n", __func__, m_sn, m_ackSn, m_ue->getUeId());
+		return TRUE;
+	}
+
+	m_timerValue--;
+	return FALSE;
+}
+
+
+// -------------------------------------
+void RlcLayer::stopTimer() {
+	m_timerValue = -1;
 }
 
 // -------------------------------------

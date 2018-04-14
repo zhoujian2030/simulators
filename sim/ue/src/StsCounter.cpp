@@ -29,7 +29,7 @@ StsCounter::StsCounter()
   m_identityRespSent(0), m_attachRejectRecvd(0), m_rrcReleaseRecvd(0), m_t300Timeout(0), m_nonConsecutiveSfnSf(0),
   m_numTACmdRecvd(0), m_numForceULGrantRecvd(0), m_numBsrTimeout(0), m_numRRCSetupTimeout(0), m_invalidState(0),
   m_allocDlHarqFailure(0), m_numRRCReestabRej(0), m_numRRCConnRej(0), m_numSuccRejTest(0), m_rrcSetupRetransmit(0),
-  m_identityReqRetransmit(0)
+  m_identityReqRetransmit(0), m_rlcTimeout(0)
 {
 
 }
@@ -194,6 +194,10 @@ void StsCounter::show() {
 	}
 	if (m_harqTimeout > 0) {
 		varDataLen = sprintf(stsData + sumLength, " Num HARQ timeout:        %d\n", m_harqTimeout);
+		sumLength += varDataLen;
+	}
+	if (m_rlcTimeout > 0) {
+		varDataLen = sprintf(stsData + sumLength, " Num RLC timeout:         %d\n", m_rlcTimeout);
 		sumLength += varDataLen;
 	}
 	if (m_harqNAckRecvd > 0) {

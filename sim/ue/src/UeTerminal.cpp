@@ -519,6 +519,13 @@ void UeTerminal::processTimer(UeScheduler* pUeScheduler) {
             pUeScheduler->resetUeTerminal(m_rnti, m_ueId);
         }
     }
+
+    if (m_state > RRC_SETUP_COMPLETE_SR_SENT) {
+    	if (m_rlcLayer->processTimer()) {
+    		m_stsCounter->countRlcTimeout();
+    		m_state = WAIT_TERMINATING;
+    	}
+    }
 }
 
 // --------------------------------------------------------
@@ -941,6 +948,8 @@ void UeTerminal::buildRRCSetupComplete() {
     m_phyMacAPI->addSchPduData(rrcSetupCompl, pUlDataPduInd->length);
 
     m_stsCounter->countRRCSetupComplSent();
+
+    m_rlcLayer->startTimer();
 
     LOG_INFO(UE_LOGGER_NAME, "[%s], %s, compose RRC setup complete, msgLen = %d\n",  __func__, m_uniqueId, pL1Api->msgLen);
 }

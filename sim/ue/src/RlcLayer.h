@@ -146,6 +146,10 @@ namespace ue {
         void handleRxAMDPdu(UInt8* buffer, UInt32 length);
         void buildRlcAMDHeader(UInt8* buffer, UInt32& length);
 
+        void startTimer();
+        BOOL processTimer();
+        void stopTimer();
+
     private:
 
         void reassembleAMDPdu(AmdHeader* header, UInt8* buffer, UInt32 length);
@@ -165,6 +169,8 @@ namespace ue {
         UInt8 m_rlcSdu[1024*10];
 
         UInt16 m_sn;
+        UInt16 m_ackSn;
+        SInt16 m_timerValue;
     };
 
     inline void RlcLayer::freeAllSegments() {
