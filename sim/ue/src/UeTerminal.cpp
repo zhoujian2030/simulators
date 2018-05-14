@@ -801,7 +801,7 @@ void UeTerminal::buildBSRAndData(BOOL isLongBSR) {
             	LOG_TRACE(UE_LOGGER_NAME, "[%s], %s, add Identity Response\n",  __func__, m_uniqueId);
                 m_triggerIdRsp = FALSE;
                 UInt8 identityRsp[IDENTITY_MSG_LENGTH];
-                UInt32 length;
+                UInt32 length = 0;
                 m_rrcLayer->buildIdentityResponse(identityRsp, length);
                 m_pdcpLayer->buildSrb1Header(identityRsp, length);   
                 m_rlcLayer->buildRlcAMDHeader(identityRsp, length); 

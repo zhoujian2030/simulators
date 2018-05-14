@@ -60,7 +60,7 @@ void RrcLayer::buildIdentityResponse(UInt8* buffer, UInt32& length) {
     identityRsp[13] = (imsiOtect1 & 0x07) << 5;
 
     memcpy(buffer, identityRsp, 20);
-    length = 20;
+    length += 20;
 }
 
 // -------------------------------------
