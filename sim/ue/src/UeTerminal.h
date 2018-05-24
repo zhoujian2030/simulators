@@ -223,6 +223,8 @@ namespace ue {
         void processDlHarq(UeScheduler* pUeScheduler);
         void processTimer(UeScheduler* pUeScheduler);
 
+        BOOL scheduleDcchOnly(UeScheduler* pUeScheduler);
+
         BOOL m_suspend;
 
         UInt32 m_accessCount;

@@ -130,6 +130,7 @@ BOOL UeTerminal::schedule(UInt16 sfn, UInt8 sf, UeScheduler* pUeScheduler) {
     m_sfn = sfn;
     m_sf = sf;   
 
+#if 0
     if (m_biRecvd) {
     	static UInt16 cnt = 0;
     	cnt++;
@@ -157,6 +158,11 @@ BOOL UeTerminal::schedule(UInt16 sfn, UInt8 sf, UeScheduler* pUeScheduler) {
     this->processDlHarq(pUeScheduler);
     this->processTimer(pUeScheduler);
     // TODO
+#else
+    if (!this->scheduleDcchOnly(pUeScheduler)) {
+    	return FALSE;
+    }
+#endif
 
     return TRUE;
 }
@@ -446,6 +452,186 @@ void UeTerminal::scheduleSR(UeScheduler* pUeScheduler) {
         }
     }
 }
+
+// ---------------------------------------------------
+#if 1
+#define  DL_CONFIG_REQUEST                      (0x80)
+#define  UL_CONFIG_REQUEST                      (0x81)
+#define  SUBFRAME_INDICATION                    (0x82)
+#define  UL_DCI_REQUEST                         (0x83)
+#define  TX_REQUEST                             (0x84)
+#define  HARQ_INDICATION                        (0x85)
+#define  RX_ULSCH_INDICATION                    (0x87)
+#define  RACH_INDICATION                        (0x88)
+#define  SRS_INDICATION                         (0x89)
+#define  RX_SR_INDICATION                       (0x8a)
+#define  RX_CQI_INDICATION                      (0x8b)
+#define  RX_ULCRC_INDICATION                    (0x8c)
+#define  MSG_INVALID                            (0xFF)
+
+typedef struct  PhyHlMsgHead
+{
+	UInt32 mNum;
+	UInt32 tLen;
+	UInt32 sno;
+	UInt8  attr;
+	UInt8  common;
+	UInt16 opc;
+
+	UInt32 UeId;
+	UInt16 cRnti;
+	UInt8  cellId;
+	UInt8  reserved1;
+	UInt32 handle;
+	UInt32 reserved2;
+}S_PhyHlMsgHead;
+
+typedef struct UlIndHead
+{
+	UInt16    sfn;
+	UInt8     sf;
+	UInt8     numOfPDUs;
+
+}S_UlIndHead;
+
+typedef struct RxUlschIndHeadPdu
+{
+	UInt32  UeId;
+
+	UInt16   RNTI;
+	UInt8    RNTIType;
+	UInt8    mcs;
+
+	UInt32   bitLen;
+
+	UInt16   wordLen;
+	UInt8    CRCFlag;
+	Int8     SNR;
+
+	Int16    TA;
+	UInt8    rbNum;
+	UInt8    Reserved;
+
+	Int32	prbPower;
+	Int32	puschRssi;
+
+    // UInt32  PDU[Length]
+
+}S_RxUlschIndHeadPdu;
+
+typedef struct {
+	UInt16 rnti;
+	UInt16 length;
+	UInt8* buffer;
+} UlSchPdu;
+// --------------------------------------------
+BOOL UeTerminal::scheduleDcchOnly(UeScheduler* pUeScheduler)
+{
+	if (m_accessCount >= m_maxAccessCount && m_state == IDLE) {
+		return FALSE;
+	}
+
+	unsigned short length = 0;
+	UInt8* pMsgBuffer;
+	S_PhyHlMsgHead* pPhyMsgHead;
+	S_UlIndHead* pUlIndHead;
+	S_RxUlschIndHeadPdu* pUlSchPduHead;
+
+	if (m_sf == 2 || m_sf == 7) {
+		if (m_state == IDLE) {
+			UInt8 macPdu[RRC_SETUP_COMPLETE_LENGTH] = {
+				0x3D, 0x21, 0x4b, 0x1F, 0x00, 0xA0, 0x00, 0x00,  // need RLC status report
+				0x22, 0x00, 0x82, 0x0E, 0x82, 0xE2, 0x10, 0x92, 0x0C, 0x00, 0x2A, 0x69, 0x04, 0xC2, 0x4C, 0x09,
+				0xC1, 0xC1, 0x81, 0x80, 0x00, 0x46, 0x04, 0x03, 0xA0, 0x62, 0x4E, 0x3B, 0x01, 0x00, 0x42, 0x20,
+				0x02, 0x02, 0x00, 0x21, 0x02, 0x0C, 0x00, 0x00, 0x00, 0x01, 0x06, 0x0C, 0x00, 0x00, 0x00, 0x00,
+				0x00, 0x06, 0x00, 0x00, 0x06, 0x00, 0x00, 0x14, 0x00, 0xB8, 0x40, 0x00, 0x62, 0x07, 0x2A, 0xC0,
+				0x28, 0xBA, 0x02, 0x08, 0x00, 0x00, 0x00, 0x00, 0x54, 0x03, 0xEB, 0x3F, 0x55};
+
+			pMsgBuffer = m_phyMacAPI->getSchBuffer();
+			pPhyMsgHead = (S_PhyHlMsgHead*)pMsgBuffer;
+			pPhyMsgHead->opc = RX_ULSCH_INDICATION;
+
+			pUlIndHead = (S_UlIndHead*)(pMsgBuffer + sizeof(S_PhyHlMsgHead));
+			pUlIndHead->sfn = m_sfn;
+			pUlIndHead->sf = m_sf;
+			pUlIndHead->numOfPDUs += 1;
+
+			if (pUlIndHead->numOfPDUs == 1) {
+				length += sizeof(S_PhyHlMsgHead);
+				length += sizeof(S_UlIndHead);
+				pUlSchPduHead = (S_RxUlschIndHeadPdu*)(pMsgBuffer + length);
+			} else {
+				pUlSchPduHead = (S_RxUlschIndHeadPdu*)(pMsgBuffer + m_phyMacAPI->getSchDataLength());
+			}
+			length += sizeof(S_RxUlschIndHeadPdu);
+			m_phyMacAPI->addSchDataLength(length);
+
+			pUlSchPduHead->RNTI = m_raRnti + 100;
+			pUlSchPduHead->CRCFlag = 1;
+			pUlSchPduHead->wordLen = (RRC_SETUP_COMPLETE_LENGTH + 3) >> 2;
+			pUlSchPduHead->bitLen = RRC_SETUP_COMPLETE_LENGTH << 3;
+//			m_phyMacAPI->addSchPduData(macPdu, RRC_SETUP_COMPLETE_LENGTH);
+			memcpy(pMsgBuffer + m_phyMacAPI->getSchDataLength(), macPdu, RRC_SETUP_COMPLETE_LENGTH);
+			m_phyMacAPI->addSchDataLength((pUlSchPduHead->wordLen << 2));
+
+			m_state = RRC_SETUP_COMPLETE_SENT;
+
+			m_stsCounter->countRRCSetupComplSent();
+
+			LOG_INFO(UE_LOGGER_NAME, "[%s], %s, send rrc setup complete, length = %d\n",  __func__, m_uniqueId, m_phyMacAPI->getSchDataLength());
+
+		} else if (m_state == RRC_SETUP_COMPLETE_SENT) {
+			UInt8 macPdu[] = {
+					0x3D, 0x21, 0x02, 0x21, 0x15, 0x1F, 0x00, 0x00, 0x04, 0xA0,
+					0x01, 0x01, 0x48, 0x01, 0x60, 0xEA, 0xC1, 0x09, 0x20, 0xC8,
+					0x02, 0x26, 0x80, 0xF2, 0x4E, 0x80, 0x00, 0x00, 0x00, 0x00,
+					0x04, 0x03, 0xA0, 0x62, 0x4E, 0x3B, 0x01, 0x00, 0x42, 0x20,
+					0x02, 0x02, 0x00, 0x21, 0x02, 0x0C, 0x00, 0x00, 0x00, 0x01,
+					0x06, 0x0C, 0x00, 0x00, 0x00, 0x00, 0x00, 0x06, 0x00, 0x00,
+					0x06, 0x00, 0x00, 0x14, 0x00, 0xB8, 0x40, 0x00, 0xBA, 0x02,
+					0x08, 0x00, 0x00, 0x00, 0x00, 0x3B, 0x8E, 0x8A, 0x41, 0x2B,
+					0xF3, 0x53, 0x24, 0x5A, 0x1F};
+
+			pMsgBuffer = m_phyMacAPI->getSchBuffer();
+			pPhyMsgHead = (S_PhyHlMsgHead*)pMsgBuffer;
+			pPhyMsgHead->opc = RX_ULSCH_INDICATION;
+
+			pUlIndHead = (S_UlIndHead*)(pMsgBuffer + sizeof(S_PhyHlMsgHead));
+			pUlIndHead->sfn = m_sfn;
+			pUlIndHead->sf = m_sf;
+			pUlIndHead->numOfPDUs += 1;
+
+			if (pUlIndHead->numOfPDUs == 1) {
+				length += sizeof(S_PhyHlMsgHead);
+				length += sizeof(S_UlIndHead);
+				pUlSchPduHead = (S_RxUlschIndHeadPdu*)(pMsgBuffer + length);
+			} else {
+				pUlSchPduHead = (S_RxUlschIndHeadPdu*)(pMsgBuffer + m_phyMacAPI->getSchDataLength());
+			}
+			length += sizeof(S_RxUlschIndHeadPdu);
+			m_phyMacAPI->addSchDataLength(length);
+
+			pUlSchPduHead->RNTI = m_raRnti + 100;
+			pUlSchPduHead->CRCFlag = 1;
+			pUlSchPduHead->wordLen = (sizeof(macPdu) + 3) >> 2;
+			pUlSchPduHead->bitLen = sizeof(macPdu) << 3;
+//			m_phyMacAPI->addSchPduData(macPdu, sizeof(macPdu));
+			memcpy(pMsgBuffer + m_phyMacAPI->getSchDataLength(), macPdu, sizeof(macPdu));
+			m_phyMacAPI->addSchDataLength((pUlSchPduHead->wordLen << 2));
+
+			m_state = IDLE;
+
+			m_accessCount++;
+
+			m_stsCounter->countIdentityResponseSent();
+
+			LOG_INFO(UE_LOGGER_NAME, "[%s], %s, send identity response, length = %d\n",  __func__, m_uniqueId, m_phyMacAPI->getSchDataLength());
+		}
+	}
+
+	return TRUE;
+}
+#endif
 
 // --------------------------------------------
 void UeTerminal::scheduleDCCH(UeScheduler* pUeScheduler) {

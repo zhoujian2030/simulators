@@ -77,6 +77,7 @@ namespace ue {
         void addHarqDataLength(UInt16 length);
         void addSrDataLength(UInt16 length);
         void addUeConfigMsgLength(UInt16 length);
+        UInt16 getSchDataLength();
 
         void addSchPduData(UInt8* theBuffer, UInt32 length);
 
@@ -157,6 +158,11 @@ namespace ue {
     // ------------------------------------
     inline void PhyMacAPI::addSchDataLength(UInt16 length) {
        m_schDataLength += length;
+    }
+
+    // ------------------------------------
+    inline UInt16 PhyMacAPI::getSchDataLength() {
+    	return m_schDataLength;
     }
 
     // ------------------------------------
