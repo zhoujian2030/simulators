@@ -228,8 +228,8 @@ void PhyMacAPI::sendData() {
 #if 0
         memcpy((void*)(m_schBuffer + m_schDataLength - m_schPduLength), (void*)m_schPduBuffer, m_schPduLength);
 #endif
-        LOG_TRACE(UE_LOGGER_NAME, "send sch indication (%d): \n", m_schDataLength);
-        qmssSendMsg(QMSS_TX_FREE_HAND_PHY_TO_LAYER2D_DATAUP, QMSS_TX_HAND_PHY_TO_OTHER, (Int8*)m_schBuffer, m_schDataLength);
+        LOG_INFO(UE_LOGGER_NAME, "send sch indication (%d): \n", m_schDataLength);
+        qmssSendMsg(QMSS_TX_FREE_HAND_LAYER2C_TO_L3_CFG_RSP, QMSS_TX_HAND_LAYER2C_TO_OTHER_DATA, (Int8*)m_schBuffer, m_schDataLength);
     }
 
     if (m_crcDataLength > 0) {
