@@ -66,7 +66,11 @@ void UENotSendHarqAckForMsg4::dlHarqResultCallback(UInt16 harqProcessNum, UInt8 
 #endif
             if (m_state == MSG4_RECVD) {
             	LOG_INFO(UE_LOGGER_NAME, "[%s], %s, send HARQ DTX for MSG4\n", __func__, m_uniqueId);
+#ifdef TDD_CONFIG
                 pTddHarqPduInd->harqBuffer[0] = 4;
+#else
+                pFddHarqPduInd->harqTB1 = 4;
+#endif
                 m_state = WAIT_TERMINATING;
 //                this->startRRCSetupTimer();
             } else if (m_state == RRC_SETUP_RECVD) {
