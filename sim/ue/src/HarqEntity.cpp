@@ -65,6 +65,18 @@ void HarqEntity::reset() {
 }
 
 // ------------------------------------------------
+void HarqEntity::resetUlHarq() {
+    LOG_TRACE(UE_LOGGER_NAME, "[%s], reset ul harq entity\n", __func__);
+
+    map<UInt16, UInt16>::iterator ulIter = m_harqIdUlIndexMap.begin();
+    while (ulIter != m_harqIdUlIndexMap.end()) {
+        m_ulHarqProcessList[ulIter->second]->free();
+        ulIter++;
+    }
+    m_harqIdUlIndexMap.clear();
+}
+
+// ------------------------------------------------
 BOOL HarqEntity::allocateUlHarqProcess(
     FAPI_dlHiDCIPduInfo_st* pHIDci0Header, 
     FAPI_dlDCIPduInfo_st* pDci0Pdu, 
@@ -170,6 +182,16 @@ BOOL HarqEntity::handleAckNack(
     }     
 
     return FALSE;
+}
+
+// -------------------------------------------
+void HarqEntity::freeUlHarqProcess(UInt16 harqId) {
+	map<UInt16, UInt16>::iterator it = m_harqIdUlIndexMap.find(harqId);
+	if (it != m_harqIdUlIndexMap.end()) {
+		LOG_INFO(UE_LOGGER_NAME, "[%s], free harqId = %d\n", __func__, harqId);
+		m_ulHarqProcessList[it->second]->free();
+		m_harqIdUlIndexMap.erase(it);
+	}
 }
 
 // -------------------------------------------    
@@ -419,7 +441,7 @@ BOOL HarqEntity::UlHarqProcess::calcAndProcessTimer(UInt16 harqId, UeTerminal* p
     BOOL isTimeout = FALSE;
     if (m_timerValue == 0) {
         // contention resolution timeout        
-        LOG_ERROR(UE_LOGGER_NAME, "[%s], %s, harq timeout\n", __func__, pUeTerminal->m_uniqueId);
+        LOG_ERROR(UE_LOGGER_NAME, "[%s], %s, harq timeout, harqId = %d\n", __func__, pUeTerminal->m_uniqueId, harqId);
 #if 0
         pUeTerminal->ulHarqTimeoutCallback(harqId, m_ueState);
 #else
