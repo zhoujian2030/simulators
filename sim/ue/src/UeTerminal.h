@@ -46,7 +46,7 @@ namespace ue {
         void handleUlSchPdu(FAPI_ulConfigRequest_st* pUlConfigHeader, FAPI_ulSCHPduInfo_st* pUlSchPdu);
         void displayUlSchPduInfo(FAPI_ulSCHPduInfo_st* pUlSchPdu);
 
-        void handleDci0Pdu(FAPI_dlHiDCIPduInfo_st* pHIDci0Header, FAPI_dlDCIPduInfo_st* pDci0Pdu);
+        virtual void handleDci0Pdu(FAPI_dlHiDCIPduInfo_st* pHIDci0Header, FAPI_dlDCIPduInfo_st* pDci0Pdu);
         BOOL handleHIPdu(FAPI_dlHiDCIPduInfo_st* pHIDci0Header, FAPI_dlHiPduInfo_st* pHiPdu);
 
         // ------------------------------------------
@@ -58,8 +58,8 @@ namespace ue {
 
         // ------------------------------------------
         // callback functions of ul harq process
-        void allocateUlHarqCallback(UInt16 harqId, BOOL result);
-        void ulHarqSendCallback(UInt16 harqId, UInt8 numRb, UInt8 mcs, UInt8& ueState);
+        virtual void allocateUlHarqCallback(UInt16 harqId, BOOL result);
+        virtual void ulHarqSendCallback(UInt16 harqId, UInt8 numRb, UInt8 mcs, UInt8& ueState);
         // result TRUE: ack, FALSE: nack
         virtual void ulHarqResultCallback(UInt16 harqId, BOOL result, UInt8 ueState);
         void ulHarqTimeoutCallback(UInt16 harqId, UInt8 ueState);
@@ -105,7 +105,8 @@ namespace ue {
 
             RRC_CONNECTED, //25
             RRC_RELEASING,
-            WAIT_TERMINATING
+            WAIT_TERMINATING,
+            CRC_ERR_IND_SENT
         } E_UE_STATE;
 
         typedef enum {

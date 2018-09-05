@@ -470,6 +470,7 @@ void UeTerminal::scheduleDCCH(UeScheduler* pUeScheduler) {
             m_harqEntity->send(this);
         }
         case RRC_SETUP_COMPLETE_BSR_SENT:
+        case CRC_ERR_IND_SENT:
         {
             m_harqEntity->calcAndProcessUlHarqTimer(this);
             break;

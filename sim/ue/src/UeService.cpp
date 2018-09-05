@@ -292,7 +292,7 @@ void handleCliCommand(void* pPhyUeSim, UInt8* pBuff, UInt32 length) {
 
 		UpdateUeConfig(pPhyUeSim, paramReq->numUe, paramReq->numTestTime);
 	} else {
-		LOG_ERROR(MODULE_ID_LAYER_MGR, "[%s], Invalid msgId = %d\n", __func__, msgId)
+		LOG_TRACE(MODULE_ID_LAYER_MGR, "[%s], Invalid msgId = %d\n", __func__, msgId)
 	}
 
 }
