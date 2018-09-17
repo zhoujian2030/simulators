@@ -90,7 +90,7 @@ void NWRetransmitRrcSetup::dlHarqResultCallback(UInt16 harqProcessNum, UInt8 ack
 				pHarqInd->sfnsf = ( (m_sfn) << 4) | ( (m_sf) & 0xf);
 				pHarqInd->numOfHarq += 1;
 				UInt32 harqHeaderLen = offsetof(FAPI_harqIndication_st, harqPduInfo);
-
+#ifdef TDD_CONFIG
 				FAPI_tddHarqPduIndication_st* pTddHarqPduInd = (FAPI_tddHarqPduIndication_st*)&pHarqInd->harqPduInfo[pHarqInd->numOfHarq - 1];
 				pTddHarqPduInd->rnti = m_rnti;
 				pTddHarqPduInd->mode = tddAckNackFeedbackMode;  // 0: bundling, 1: multplexing, 2: special bundling
@@ -99,6 +99,13 @@ void NWRetransmitRrcSetup::dlHarqResultCallback(UInt16 harqProcessNum, UInt8 ack
 				pTddHarqPduInd->harqBuffer[1] = 0;
 
 				msgLen += sizeof(FAPI_tddHarqPduIndication_st);
+#else
+				FAPI_fddHarqPduIndication_st* pFddHarqPduInd = (FAPI_fddHarqPduIndication_st*)&pHarqInd->harqPduInfo[pHarqInd->numOfHarq - 1];
+				pFddHarqPduInd->rnti = m_rnti;
+				pFddHarqPduInd->harqTB1 = ackFlag;
+				pFddHarqPduInd->harqTB2 = 0;
+				msgLen += sizeof(FAPI_fddHarqPduIndication_st);
+#endif
 				pL1Api->msgLen += msgLen;
 
 				m_phyMacAPI->addHarqDataLength(msgLen);
@@ -114,9 +121,9 @@ void NWRetransmitRrcSetup::dlHarqResultCallback(UInt16 harqProcessNum, UInt8 ack
             } else if (m_state == RRC_SETUP_RECVD) {
                 if (m_numRRCSetupRetrans < MAX_RETRANSMIT_COUNT) {
                     m_state = RRC_SETUP_RETRANSMIT;
-    #if 0
+#if 0
                     LOG_INFO(UE_LOGGER_NAME, "[%s], %s, Not send HARQ ACK, wait network restransmit, change state to %d\n", __func__, m_uniqueId, m_state);
-    #else 
+#else
                     LOG_INFO(UE_LOGGER_NAME, "[%s], %s, send HARQ NACK\n", __func__, m_uniqueId);
                     pL1Api->lenVendorSpecific = 0;
                     pL1Api->msgId = PHY_UL_HARQ_INDICATION;
@@ -125,6 +132,7 @@ void NWRetransmitRrcSetup::dlHarqResultCallback(UInt16 harqProcessNum, UInt8 ack
                     pHarqInd->numOfHarq += 1;
                     UInt32 harqHeaderLen = offsetof(FAPI_harqIndication_st, harqPduInfo);
 
+#ifdef TDD_CONFIG
                     FAPI_tddHarqPduIndication_st* pTddHarqPduInd = (FAPI_tddHarqPduIndication_st*)&pHarqInd->harqPduInfo[pHarqInd->numOfHarq - 1];
                     pTddHarqPduInd->rnti = m_rnti;
                     pTddHarqPduInd->mode = tddAckNackFeedbackMode;  // 0: bundling, 1: multplexing, 2: special bundling
@@ -133,6 +141,14 @@ void NWRetransmitRrcSetup::dlHarqResultCallback(UInt16 harqProcessNum, UInt8 ack
                     pTddHarqPduInd->harqBuffer[1] = 0;
 
                     msgLen += sizeof(FAPI_tddHarqPduIndication_st);
+#else
+    				FAPI_fddHarqPduIndication_st* pFddHarqPduInd = (FAPI_fddHarqPduIndication_st*)&pHarqInd->harqPduInfo[pHarqInd->numOfHarq - 1];
+    				pFddHarqPduInd->rnti = m_rnti;
+    				pFddHarqPduInd->harqTB1 = 4;
+    				pFddHarqPduInd->harqTB2 = 0;
+    				msgLen += sizeof(FAPI_fddHarqPduIndication_st);
+#endif
+
                     pL1Api->msgLen += msgLen;
 
                     m_phyMacAPI->addHarqDataLength(msgLen);
@@ -140,7 +156,7 @@ void NWRetransmitRrcSetup::dlHarqResultCallback(UInt16 harqProcessNum, UInt8 ack
                         m_phyMacAPI->addHarqDataLength(FAPI_HEADER_LENGTH + harqHeaderLen);
                         pL1Api->msgLen += harqHeaderLen;
                     }
-    #endif
+#endif
             	    return;
                 } else {
                     m_state = RRC_SETUP_ACK_SENT;
@@ -153,8 +169,15 @@ void NWRetransmitRrcSetup::dlHarqResultCallback(UInt16 harqProcessNum, UInt8 ack
                 // TODO
             }
         } else {
+#ifdef TDD_CONFIG
             FAPI_tddHarqPduIndication_st* pTddHarqPduInd = (FAPI_tddHarqPduIndication_st*)&pHarqInd->harqPduInfo[pHarqInd->numOfHarq - 1];
             pTddHarqPduInd->numOfAckNack += 1;
+#else
+            LOG_INFO(UE_LOGGER_NAME, "[%s], %s, TODO send HARQ ACK for harqTB2\n", __func__, m_uniqueId);
+            FAPI_fddHarqPduIndication_st* pFddHarqPduInd = (FAPI_fddHarqPduIndication_st*)&pHarqInd->harqPduInfo[pHarqInd->numOfHarq - 1];
+            pFddHarqPduInd->rnti = m_rnti;
+            pFddHarqPduInd->harqTB2 = ackFlag;
+#endif
         }
 
         // it counts number of ACK needs to sent for DL TB,
