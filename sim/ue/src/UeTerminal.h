@@ -231,7 +231,7 @@ namespace ue {
 
         // timer to wait RRC connection setup complete
         SInt32 m_t300Value;
-        void startT300();
+        virtual void startT300();
         void stopT300();
         BOOL isT300Expired();
 

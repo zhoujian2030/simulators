@@ -27,6 +27,7 @@
 #include "UENotSendIdentityResp.h"
 #include "UENotSendHarqAckForMsg4.h"
 #include "PhySendCrcErrorInd.h"
+#include "TestForcedUlGrant.h"
 
 using namespace ue;
 using namespace std;
@@ -89,7 +90,7 @@ UeScheduler::UeScheduler(PhyMacAPI* phyMacAPI, StsCounter* stsCounter)
     m_ueList = new UeTerminal*[MAX_UE_SUPPORTED];
 #if 1
     for (UInt32 i=0; i<MAX_UE_SUPPORTED; i++) {
-//    	 m_ueList[i] = new UeTerminal(i+1, i+1, i+1, phyMacAPI, stsCounter);
+    	 m_ueList[i] = new UeTerminal(i+1, i+1, i+1, phyMacAPI, stsCounter);
 //   	    m_ueList[i] = new NWRetransmitRrcSetup(i+1, i+1, i+1, phyMacAPI, stsCounter);
 //       m_ueList[i] = new UENotSendRrcSetupComplete(i+1, i+1, i+1, phyMacAPI, stsCounter);
 //        m_ueList[i] = new NWRetransmitIdentityReq(i+1, i+1, i+1, phyMacAPI, stsCounter);
@@ -100,7 +101,9 @@ UeScheduler::UeScheduler(PhyMacAPI* phyMacAPI, StsCounter* stsCounter)
 //        m_ueList[i] = new UeNotSendRlcAndHarqAck(i+1, i+1, i+1, phyMacAPI, stsCounter);
 //    	 m_ueList[i] = new UENotSendIdentityResp(i+1, i+1, i+1, phyMacAPI, stsCounter);
 //		 m_ueList[i] = new UENotSendHarqAckForMsg4(i+1, i+1, i+1, phyMacAPI, stsCounter);
-    	 m_ueList[i] = new PhySendCrcErrorInd(i+1, i+1, i+1, phyMacAPI, stsCounter);
+//    	 m_ueList[i] = new PhySendCrcErrorInd(i+1, i+1, i+1, phyMacAPI, stsCounter);
+//    	 m_ueList[i] = new TestForcedUlGrant(i+1, i+1, i+1, phyMacAPI, stsCounter);
+
 
     	 m_ueList[i]->updateConfig(0);
     }
