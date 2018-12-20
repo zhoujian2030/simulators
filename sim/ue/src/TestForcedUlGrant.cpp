@@ -14,6 +14,7 @@
 #include "PhyMacAPI.h"
 #include "UeScheduler.h"
 #include "StsCounter.h"
+#include "HarqEntity.h"
 
 using namespace ue;
 
@@ -27,6 +28,73 @@ TestForcedUlGrant::TestForcedUlGrant(UInt8 ueId, UInt16 raRnti, UInt16 preamble,
 // --------------------------------------------
 TestForcedUlGrant::~TestForcedUlGrant() {
 
+}
+
+// --------------------------------------------
+void TestForcedUlGrant::handleDci0Pdu(FAPI_dlHiDCIPduInfo_st* pHIDci0Header, FAPI_dlDCIPduInfo_st* pDci0Pdu) {
+	LOG_TRACE(UE_LOGGER_NAME, "[%s], %s, handle DCI0, m_state = %d\n",  __func__, m_uniqueId, m_state);
+
+    if (m_state == IDLE) {
+        LOG_WARN(UE_LOGGER_NAME, "[%s], %s, UE in idle state, drop the data\n",  __func__, m_uniqueId);
+        return;
+    }
+
+    if (m_suspend) {
+    	LOG_DBG(UE_LOGGER_NAME, "[%s], %s, UE suspended\n",  __func__, m_uniqueId);
+    	return;
+    }
+
+    UInt16 sfn = (pHIDci0Header->sfnsf & 0xfff0) >> 4;
+    UInt8 sf = pHIDci0Header->sfnsf & 0x0f;
+    if (sfn != m_sfn || sf != m_sf) {
+        LOG_ERROR(UE_LOGGER_NAME, "[%s], %s, global tick may not consecutive, terminate connection, provSfnSf = %d.%d\n",
+        		__func__, m_uniqueId, sfn, sf);
+        m_stsCounter->countNonConsecutiveSfnSf();
+        m_stsCounter->countTestFailure();
+        m_state = WAIT_TERMINATING;
+        return;
+    }
+
+    // UInt8 sf  = pHIDci0Header->sfnsf & 0x000f;
+    // UInt16 sfn  = (pHIDci0Header->sfnsf & 0xfff0) >> 4;
+    UInt8 dciFormat = pDci0Pdu->ulDCIFormat;
+    // UInt16 harqId = (pDci0Pdu->rbStart << 8) | pDci0Pdu->cyclicShift2_forDMRS;
+
+    if (dciFormat == FAPI_UL_DCI_FORMAT_0) {
+        LOG_INFO(UE_LOGGER_NAME, "[%s], %s, receive FAPI_UL_DCI_FORMAT_0, rbStart = %d, "
+            "numOfRB = %d, newDataIndication = %d, mcs = %d\n",  __func__, m_uniqueId, pDci0Pdu->rbStart,
+            pDci0Pdu->numOfRB, pDci0Pdu->newDataIndication, pDci0Pdu->mcs);
+        LOG_INFO(UE_LOGGER_NAME, "[%s], %s, cyclicShift2_forDMRS = %d, tpc = %d\n",  __func__, m_uniqueId,
+			pDci0Pdu->cyclicShift2_forDMRS, pDci0Pdu->tpc);
+        // eNb allocates the UL resource, stop the timer and prepare to send RRC setup complete
+	   if (m_state == RRC_SETUP_COMPLETE_SR_SENT) {
+		   m_harqEntity->allocateUlHarqProcess(pHIDci0Header, pDci0Pdu, this);
+		   // stop the SR timer even it fails to allocate harq process for sending UL data
+		   stopSRTimer();
+		   // m_stsCounter->countRRCSetupComplDCI0Recvd();
+
+	   } else if (m_state == RRC_SETUP_COMPLETE_BSR_ACK_RECVD) {
+		   m_harqEntity->allocateUlHarqProcess(pHIDci0Header, pDci0Pdu, this);
+		   stopBSRTimer();
+		   m_stsCounter->countRRCSetupComplDCI0Recvd();
+	   } else {
+		   if (isSRSent()) {
+			   LOG_TRACE(UE_LOGGER_NAME, "[%s], %s, Recv UL Grant for SR, state = %d\n",  __func__, m_uniqueId, m_state);
+			   stopSRTimer();
+		   } else if (isNonZeroBSRSent()) {
+			   LOG_TRACE(UE_LOGGER_NAME, "[%s], %s, Recv UL Grant for BSR, state = %d\n",  __func__, m_uniqueId, m_state);
+			   stopBSRTimer();
+		   } else {
+			   LOG_DBG(UE_LOGGER_NAME, "[%s], %s, Recv force UL Grant, TBD state = %d\n",  __func__, m_uniqueId, m_state);
+			   m_stsCounter->countForceULGrantRecvd();
+		   }
+
+		   // TODO
+		   m_harqEntity->allocateUlHarqProcess(pHIDci0Header, pDci0Pdu, this);
+	   }
+    } else {
+    	LOG_INFO(UE_LOGGER_NAME, "[%s], %s, handle DCI0, unsupported dciFormat = %d\n",  __func__, m_uniqueId, dciFormat);
+    }
 }
 
 // --------------------------------------------
@@ -110,10 +178,10 @@ void TestForcedUlGrant::rrcCallback(UInt32 msgType, RrcMsg* msg) {
         case IDENTITY_REQUEST:
         {
             m_stsCounter->countIdentityRequestRecvd();
-//			m_triggerIdRsp = TRUE;
-			LOG_INFO(UE_LOGGER_NAME, "[%s], %s, recv Identity Request, will not send Identity Resp later\n",  __func__, m_uniqueId);
+			m_triggerIdRsp = TRUE;
+			LOG_INFO(UE_LOGGER_NAME, "[%s], %s, recv Identity Request, will send Identity Resp later\n",  __func__, m_uniqueId);
 
-//			requestUlResource();
+			requestUlResource();
 
             break;
         }

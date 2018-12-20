@@ -18,6 +18,8 @@
 
 #define UE_LOGGER_NAME MODULE_ID_LAYER_MGR
 
+//#define L2_SIM
+
 #else
 
 #define FAPI_API

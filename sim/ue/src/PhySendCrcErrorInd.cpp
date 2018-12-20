@@ -82,6 +82,9 @@ void PhySendCrcErrorInd::handleDci0Pdu(FAPI_dlHiDCIPduInfo_st* pHIDci0Header, FA
         	if (m_state == CRC_ERR_IND_SENT) {
         		LOG_INFO(UE_LOGGER_NAME, "[%s], %s, UL HARQ retransmit, state = %d\n",  __func__, m_uniqueId, m_state);
         		UInt16 harqId = (pDci0Pdu->rbStart << 8) | pDci0Pdu->cyclicShift2_forDMRS;
+#ifdef FDD_CONFIG
+        		harqId = sf;
+#endif
         		m_harqEntity->freeUlHarqProcess(harqId);
         		m_state = RRC_SETUP_COMPLETE_SR_DCI0_RECVD;
         	} else if (isSRSent()) {

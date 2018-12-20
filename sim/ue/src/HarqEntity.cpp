@@ -104,6 +104,8 @@ BOOL HarqEntity::allocateUlHarqProcess(
         pUeTerminal->allocateUlHarqCallback(harqId, FALSE);
         return FALSE;
     }
+#else
+    harqId = sf;
 #endif
 
     UlHarqProcess* pUlHarqProcess = 0;
@@ -167,6 +169,9 @@ BOOL HarqEntity::handleAckNack(
     UeTerminal* pUeTerminal)
 {
     UInt16 harqId = (pHiPdu->rbStart << 8) | pHiPdu->cyclicShift2_forDMRS;
+#ifdef FDD_CONFIG
+    harqId = (((pHIDci0Header->sfnsf & 0x0f) + 10) - 8) % 10;
+#endif
 
     map<UInt16, UInt16>::iterator it = m_harqIdUlIndexMap.find(harqId);
     if (it != m_harqIdUlIndexMap.end()) {
@@ -213,6 +218,9 @@ void HarqEntity::handleUlSchConfig(UInt16 sfnsf, void* ulSchPdu, UeTerminal* pUe
 #ifdef FAPI_API
     FAPI_ulSCHPduInfo_st* pUlSchPdu = (FAPI_ulSCHPduInfo_st*)ulSchPdu;   
     harqId = (pUlSchPdu->rbStart << 8) | pUlSchPdu->cyclicShift2forDMRS;
+#ifdef FDD_CONFIG
+    harqId = (((sfnsf & 0x0f) + 10) - 4) % 10;
+#endif
 #else
     // TODO
 #endif

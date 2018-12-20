@@ -380,6 +380,7 @@ namespace ue {
         // refer to 36.213, section 6.1.1 
         UInt8 minK1 = 6;
         UInt8 sf = m_provSf + minK1;
+//        sf++;	// for test
         UInt16 sfn = m_provSfn;
 #ifdef TDD_CONFIG
         BOOL foundFirstUlSf = FALSE;

@@ -33,7 +33,9 @@ UeTerminal::UeTerminal(UInt8 ueId, UInt16 raRnti, UInt16 preamble, PhyMacAPI* ph
   m_dsrTransMax(64), m_srCounter(0)
 {
 	LOG_TRACE(UE_LOGGER_NAME, "[%s], Entry\n", __func__);
-    m_harqEntity = new HarqEntity(stsCounter, NUM_UL_HARQ_PROCESS, NUM_DL_HARQ_PROCESS);
+#ifdef FDD_CONFIG
+    m_harqEntity = new HarqEntity(stsCounter, 8, NUM_DL_HARQ_PROCESS);
+#endif
 
     m_t300Value = -1;
     m_contResolutionTValue = -1;
@@ -375,7 +377,7 @@ void UeTerminal::scheduleMsg3(UeScheduler* pUeScheduler) {
             buildCrcData(0);
             m_stsCounter->countMsg3CrcSent();
             m_state = MSG3_SENT;
-            startContentionResolutionTimer(); 
+            startContentionResolutionTimer();
         } else {
             // TODO exception in case frame lost
         }
@@ -1551,6 +1553,7 @@ void UeTerminal::ulHarqSendCallback(UInt16 harqId, UInt8 numRb, UInt8 mcs, UInt8
         m_uniqueId, m_state, harqId, numRb, mcs);
 
     BOOL result = TRUE;
+    UInt16 tbSize = 0;
 
     if (RRC_SETUP_COMPLETE_DCI0_RECVD == ueState) {
         buildRRCSetupComplete();
@@ -1566,7 +1569,7 @@ void UeTerminal::ulHarqSendCallback(UInt16 harqId, UInt8 numRb, UInt8 mcs, UInt8
         //     buildCrcData(0);
         //     m_stsCounter->countRRCSetupComplCrcSent();
         // }
-        UInt16 tbSize = getUlTBSize(numRb, mcs);
+        tbSize = getUlTBSize(numRb, mcs);
         if ((tbSize >= (RRC_SETUP_COMPLETE_LENGTH << 3)) || (numRb > 8)) {
             buildRRCSetupComplete();
             buildCrcData(0);
@@ -1596,7 +1599,7 @@ void UeTerminal::ulHarqSendCallback(UInt16 harqId, UInt8 numRb, UInt8 mcs, UInt8
             //     buildCrcData(0); 
             // }    
 
-            UInt16 tbSize = getUlTBSize(numRb, mcs);
+            tbSize = getUlTBSize(numRb, mcs);
             if ((tbSize >= (IDENTITY_MSG_LENGTH << 3)) || (numRb > 8)) {
                 // send ul data now
                 buildBSRAndData(TRUE);
@@ -1615,7 +1618,7 @@ void UeTerminal::ulHarqSendCallback(UInt16 harqId, UInt8 numRb, UInt8 mcs, UInt8
 
     if (result == TRUE) {
         if (m_state == RRC_SETUP_COMPLETE_SR_DCI0_RECVD) {
-        	if (numRb < 4) {  // TODO need to consider both mcs and numRb
+        	if (tbSize < RRC_SETUP_COMPLETE_LENGTH) {  // TODO need to consider both mcs and numRb
         		m_state = RRC_SETUP_COMPLETE_BSR_SENT;
         	} else {
         		m_state = RRC_SETUP_COMPLETE_SENT;

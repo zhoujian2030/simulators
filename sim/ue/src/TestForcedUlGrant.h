@@ -24,6 +24,7 @@ namespace ue {
 		virtual void startT300();
 		virtual void dlHarqResultCallback(UInt16 harqProcessNum, UInt8 ackFlag, BOOL firstAck, BOOL result);
 		virtual void rrcCallback(UInt32 msgType, RrcMsg* msg);
+		virtual void handleDci0Pdu(FAPI_dlHiDCIPduInfo_st* pHIDci0Header, FAPI_dlDCIPduInfo_st* pDci0Pdu);
 	};
 
     // -------------------------------------------------------

@@ -1377,6 +1377,9 @@ void UeScheduler::handleHIDci0Req(FAPI_dlHiDCIPduInfo_st* pHIDci0Req) {
             UInt32 ueIdHarqId;
             UInt8 ueId;
             UInt16 harqId = (pHiPdu->rbStart << 8) | pHiPdu->cyclicShift2_forDMRS;
+#ifdef FDD_CONFIG
+            harqId = (sf + 10 - 8) % 10;
+#endif
             vector<UInt32>::iterator it = m_ueIdHarqIdVect.begin();
             while(it!=m_ueIdHarqIdVect.end()) {
                 ueIdHarqId = *it;
@@ -1428,7 +1431,11 @@ void UeScheduler::handleHIDci0Req(FAPI_dlHiDCIPduInfo_st* pHIDci0Req) {
                     m_ueList[ueId-1]->handleDci0Pdu(pHIDci0Req, pDciPdu);
 
                     UInt32 ueIdHarqId = (ueId << 16) | (pDciPdu->rbStart << 8) | pDciPdu->cyclicShift2_forDMRS;
+#ifdef FDD_CONFIG
+                    ueIdHarqId = (ueId << 16) | sf;
+#endif
                     m_ueIdHarqIdVect.push_back(ueIdHarqId);
+                    LOG_INFO(UE_LOGGER_NAME, "[%s], save ueId = %d, ueIdHarqId = 0x%04x\n", __func__, ueId, ueIdHarqId);
 
                     // // save the harqId as key to find ueId
                     // UInt16 harqId = (pDciPdu->rbStart << 8) | pDciPdu->cyclicShift2_forDMRS;

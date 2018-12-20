@@ -142,6 +142,7 @@ void PhyMacAPI::handleSubFrameInd(UInt16 sfnsf) {
     m_sf  = sfnsf & 0x000F;
     m_globalTick++;    
 
+#ifndef L2_SIM
     this->resetSendBuffer();
 
     m_ueScheduler->updateSfnSf(m_sfn, m_sf);
@@ -171,6 +172,10 @@ void PhyMacAPI::handleSubFrameInd(UInt16 sfnsf) {
     	updateUeConfig(0, 0);
     	foundException = TRUE;
     }
+#endif
+
+#else
+
 #endif
 }
 
