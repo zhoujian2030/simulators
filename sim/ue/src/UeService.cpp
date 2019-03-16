@@ -189,12 +189,12 @@ void UePhySimTask(void)
 			}
 
 			// Receive DL Data request
-			count = GetCountOfQmssQ(QMSS_RX_HAND_LAYER2C_FROM_LAYER2D_UL_MAC_CE, Qmss_Type_RxHand);
+			count = GetCountOfQmssQ(QMSS_RX_HAND_LAYER2D_FROM_CMAC_SCH_RESULT, Qmss_Type_RxHand);
 			n = 0;
 
 			if (count > 0) {
 				while ((n < count) && (n < 10)) {
-					if( 0 != (bytesRead = RecvMsgFromQmss((void *)msgBuf, QMSS_RX_HAND_LAYER2C_FROM_LAYER2D_UL_MAC_CE)))
+					if( 0 != (bytesRead = RecvMsgFromQmss((void *)msgBuf, QMSS_RX_HAND_LAYER2D_FROM_CMAC_SCH_RESULT)))
 					{
 						if (!gBroadcastRecvd) {
 							gBroadcastRecvd = TRUE;
